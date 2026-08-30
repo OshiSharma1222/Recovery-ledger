@@ -11,7 +11,9 @@
     "typecheck": "tsc --noEmit",
     "seed": "tsx scripts/seed.ts",
     "bench": "tsx scripts/bench.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "decide": "tsx scripts/decide.ts",
+    "prove:exhaustive": "bash scripts/prove-exhaustiveness.sh"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",

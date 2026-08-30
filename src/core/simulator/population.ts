@@ -89,6 +89,29 @@ export interface Customer {
   readonly highAfaCeiling: boolean;
 }
 
+/**
+ * The slice of a customer's mandate that the MERCHANT legitimately holds.
+ *
+ * Drawing this boundary explicitly is the point. The merchant registered the
+ * mandate, so it knows the authorised cap and the expiry date -- those are not
+ * latent and handing them to the policy is not cheating. Salary day,
+ * affluence and responsiveness stay hidden, because no merchant has them.
+ *
+ * The pitch is not "we discovered hidden data". It is "you already have this
+ * and your dunning system never joins it to the retry decision".
+ */
+export function merchantMandateRecord(c: Customer): {
+  capPaise: number;
+  expiryDay: number;
+  instrumentExpiryDay: number | null;
+} {
+  return {
+    capPaise: c.mandateCapPaise,
+    expiryDay: c.mandateExpiryDay,
+    instrumentExpiryDay: c.cardExpiryDay,
+  };
+}
+
 /** Whether this debit needs additional factor authentication under RBI rules. */
 export function requiresAfa(c: Customer): boolean {
   const ceiling = c.highAfaCeiling
