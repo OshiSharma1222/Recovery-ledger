@@ -1,0 +1,420 @@
+/**
+ * The policies under comparison.
+ *
+ * B0  no recovery              floor
+ * B1  fixed retry, days 1/3/5  industry-typical dunning
+ * B2  exponential backoff      a slightly smarter baseline
+ * B3  Recovery Ledger          the system under test (see engine.ts)
+ * B4  oracle                   theoretical ceiling, sees latent state
+ *
+ * ## Why the oracle matters more than the baselines
+ *
+ * Including B4 is the difference between "we recovered 61% of at-risk rupees",
+ * which is a number with no scale attached, and "we captured 78% of what was
+ * recoverable at all", which says something. Roughly a fifth of this ledger is
+ * structurally unrecoverable -- expired mandates, breached caps, revocations --
+ * so a naive reading of the raw recovery rate would treat a hard ceiling as
+ * policy failure. The oracle makes the ceiling visible.
+ *
+ * ## Honest naming
+ *
+ * B4 is a GREEDY oracle with full information, not a proven optimum. It sees
+ * every latent variable and picks the best available action at each step, but
+ * it does not solve the multi-step scheduling problem exactly. It is a very
+ * strong upper bound rather than a mathematical one, and the README says so.
+ * Calling it "optimal" would be an overclaim.
+ */
+
+import type { LedgerRow } from "../ledger.js";
+import type { Classification } from "../classify.js";
+import { isTerminal, type RecoveryAction } from "../taxonomy.js";
+import {
+  daysSinceSalary,
+  isBankDown,
+  merchantMandateRecord,
+  type DowntimeSchedule,
+  type LatentFailure,
+} from "../simulator/population.js";
+import {
+  BALANCE_CURVE,
+  IRREGULAR_INCOME_MODEL,
+  RESPONSE,
+  RESPONSIVENESS,
+  SIM,
+} from "../simulator/params.js";
+import { decide as ledgerDecide, type Decision } from "./engine.js";
+import type { TimingEstimator } from "./timing.js";
+
+// ---------------------------------------------------------------------------
+// Interface
+// ---------------------------------------------------------------------------
+
+/**
+ * Everything the simulator knows. ONLY B4 is permitted to read this.
+ *
+ * It is threaded through the shared context rather than handed to B4 by a
+ * side channel so that the asymmetry is visible in one place. There is a test
+ * asserting B3 produces identical decisions with and without it -- if B3 ever
+ * starts peeking, that test fails rather than the benchmark quietly inflating.
+ */
+export interface OracleView {
+  readonly failure: LatentFailure;
+  readonly downtime: DowntimeSchedule;
+}
+
+export interface PolicyContext {
+  readonly row: LedgerRow;
+  readonly classification: Classification;
+  readonly estimator: TimingEstimator;
+  /** Total debit attempts spent, including the original failed presentment. */
+  readonly attemptsSpent: number;
+  /** Retries specifically, i.e. attempts beyond the original failure. */
+  readonly retriesSpent: number;
+  readonly nudgesSent: number;
+  /** Null for every policy except B4. */
+  readonly oracle: OracleView | null;
+}
+
+export interface Policy {
+  readonly id: string;
+  readonly name: string;
+  readonly description: string;
+  /** True if this policy is allowed to read latent state. */
+  readonly usesOracle: boolean;
+  decide(ctx: PolicyContext): Decision;
+}
+
+const stop = (rationale: string, winBack = false): Decision => ({
+  action: { kind: "ABANDON", winBack },
+  dayOffset: 0,
+  rationale,
+});
+
+const retryAt = (offset: number, p: number, rationale: string): Decision => ({
+  action: { kind: "RETRY_AT", dayOffset: offset, expectedSuccess: p },
+  dayOffset: offset,
+  rationale,
+});
+
+// ---------------------------------------------------------------------------
+// B0: do nothing
+// ---------------------------------------------------------------------------
+
+export const B0_NONE: Policy = {
+  id: "B0",
+  name: "No recovery",
+  description: "Write off every failed debit. The floor.",
+  usesOracle: false,
+  decide: () => stop("No recovery attempted."),
+};
+
+// ---------------------------------------------------------------------------
+// B1: fixed schedule
+// ---------------------------------------------------------------------------
+
+/** The schedule almost every dunning stack ships with. */
+export const FIXED_SCHEDULE: readonly number[] = [1, 3, 5];
+
+export const B1_FIXED: Policy = {
+  id: "B1",
+  name: "Fixed retry (days 1/3/5)",
+  description:
+    "Retry every failed debit on days 1, 3 and 5 regardless of why it failed. " +
+    "No concept of a cause and no concept of stopping.",
+  usesOracle: false,
+  decide: (ctx) => {
+    const offset = FIXED_SCHEDULE[ctx.retriesSpent];
+    if (offset === undefined) {
+      return stop("Schedule exhausted after 3 retries.");
+    }
+    return retryAt(
+      offset,
+      0,
+      `Fixed schedule: retry ${ctx.retriesSpent + 1} of ${FIXED_SCHEDULE.length}, on day +${offset}.`,
+    );
+  },
+};
+
+// ---------------------------------------------------------------------------
+// B2: exponential backoff
+// ---------------------------------------------------------------------------
+
+export const BACKOFF_SCHEDULE: readonly number[] = [1, 2, 4, 8];
+
+export const B2_BACKOFF: Policy = {
+  id: "B2",
+  name: "Exponential backoff",
+  description:
+    "Retry on days 1, 2, 4 and 8. Smarter about transient faults than a fixed " +
+    "schedule, but still blind to the cause and still unable to stop early.",
+  usesOracle: false,
+  decide: (ctx) => {
+    const offset = BACKOFF_SCHEDULE[ctx.retriesSpent];
+    if (offset === undefined) {
+      return stop("Backoff schedule exhausted after 4 retries.");
+    }
+    return retryAt(
+      offset,
+      0,
+      `Exponential backoff: retry ${ctx.retriesSpent + 1} at +${offset}d.`,
+    );
+  },
+};
+
+// ---------------------------------------------------------------------------
+// B3: the system under test
+// ---------------------------------------------------------------------------
+
+export const B3_LEDGER: Policy = {
+  id: "B3",
+  name: "Recovery Ledger",
+  description:
+    "Classify the root cause, then choose the action that can actually work -- " +
+    "including abandoning rows where no action can.",
+  usesOracle: false,
+  decide: (ctx) =>
+    // Note what is NOT passed: ctx.oracle. B3 sees exactly what a merchant
+    // sees. The integrity test in the suite depends on this line staying true.
+    ledgerDecide({
+      row: ctx.row,
+      classification: ctx.classification,
+      estimator: ctx.estimator,
+      attemptsSpent: ctx.attemptsSpent,
+      nudgesSent: ctx.nudgesSent,
+    }),
+};
+
+// ---------------------------------------------------------------------------
+// B4: oracle
+// ---------------------------------------------------------------------------
+
+/** True P(sufficient funds), computed from latent state. Oracle only. */
+function truePFunds(failure: LatentFailure, day: number): number {
+  const c = failure.customer;
+  if (c.salaryDay < 0) {
+    // Ignores the daily wobble, which the oracle cannot predict either.
+    return Math.min(1, IRREGULAR_INCOME_MODEL.BASE_P_FUNDS * c.affluence);
+  }
+  const offset = daysSinceSalary(c, day);
+  const base = BALANCE_CURVE[Math.min(offset, BALANCE_CURVE.length - 1)]!;
+  return Math.min(1, base * c.affluence);
+}
+
+/** Mirrors the environment's stable soft/hard split. Oracle only. */
+function isSoftDoNotHonour(failure: LatentFailure): boolean {
+  const id = failure.customer.id;
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (Math.imul(h, 31) + id.charCodeAt(i)) | 0;
+  return ((h >>> 0) % 10000) / 10000 < RESPONSE.DO_NOT_HONOUR_SOFT_SHARE;
+}
+
+export const B4_ORACLE: Policy = {
+  id: "B4",
+  name: "Oracle (ceiling)",
+  description:
+    "Sees every latent variable -- salary day, true balance curve, mandate " +
+    "state, responsiveness, downtime schedule -- and takes the best available " +
+    "action. A very strong upper bound, not a proven optimum.",
+  usesOracle: true,
+  decide: (ctx) => {
+    if (!ctx.oracle) {
+      throw new Error("B4_ORACLE requires an OracleView; the runner did not supply one");
+    }
+    const { failure, downtime } = ctx.oracle;
+    const c = failure.customer;
+    const cause = failure.trueCause; // ground truth, not a classification
+    const start = ctx.row.failedOnDay;
+
+    /**
+     * The oracle must never be out-spent by a policy with less information,
+     * or the "% of ceiling" framing collapses. It therefore uses the SAME
+     * attempt budget every other policy gets, and keeps acting while the
+     * expected value of acting is positive.
+     *
+     * An earlier version of this function capped itself at three retries and
+     * gave up after a single nudge. B3 -- which is allowed five retries and
+     * re-nudges -- promptly beat it, and the integrity check in run.ts caught
+     * that rather than letting a "107% of ceiling" line reach the README.
+     */
+    const budgetLeft = SIM.MAX_ATTEMPTS - ctx.attemptsSpent;
+    if (budgetLeft <= 0) {
+      return stop("Oracle: attempt budget exhausted.", true);
+    }
+
+    /** Minimum probability worth one more action. */
+    const WORTH_IT = 0.04;
+
+    // Anything structurally dead: stop immediately and spend nothing. The
+    // oracle's advantage on these rows is entirely in what it does NOT do.
+    if (cause.kind === "MANDATE_REVOKED" || cause.kind === "RISK_BLOCKED") {
+      return stop(`Oracle: ${cause.kind} is unrecoverable. Spending nothing.`, true);
+    }
+
+    /** Decayed nudge probability, using the customer's TRUE responsiveness. */
+    const nudgeP = (factor: number) =>
+      c.responsiveness * factor * RESPONSIVENESS.REPEAT_NUDGE_DECAY ** ctx.nudgesSent;
+
+    if (cause.kind === "MANDATE_EXPIRED") {
+      // Renewal is the only thing that can work. The oracle knows exactly how
+      // likely this customer is to act, so it keeps asking while that is
+      // worth more than the ask costs, and stops the instant it is not.
+      const p = nudgeP(RESPONSE.MANDATE_RENEWAL_FACTOR);
+      if (p < WORTH_IT) {
+        return stop(
+          `Oracle: renewal odds have decayed to ${(p * 100).toFixed(0)}%. Not worth another ask.`,
+          true,
+        );
+      }
+      return {
+        action: { kind: "REQUEST_MANDATE_RENEWAL", channel: "sms" },
+        dayOffset: 1,
+        rationale: `Oracle: true responsiveness ${(c.responsiveness * 100).toFixed(0)}%, so this ask lands with p=${(p * 100).toFixed(0)}%.`,
+      };
+    }
+
+    if (cause.kind === "CARD_EXPIRED") {
+      const p = nudgeP(RESPONSE.INSTRUMENT_UPDATE_FACTOR);
+      if (p < WORTH_IT) {
+        return stop(
+          `Oracle: instrument-update odds have decayed to ${(p * 100).toFixed(0)}%.`,
+          true,
+        );
+      }
+      return {
+        action: { kind: "REQUEST_INSTRUMENT_UPDATE", channel: "sms" },
+        dayOffset: 1,
+        rationale: `Oracle: true responsiveness ${(c.responsiveness * 100).toFixed(0)}%, so this ask lands with p=${(p * 100).toFixed(0)}%.`,
+      };
+    }
+
+    if (cause.kind === "MANDATE_AMOUNT_EXCEEDED") {
+      const needed = Math.ceil(cause.attemptedPaise / cause.capPaise);
+      if (needed > RESPONSE.SPLIT_MAX_PARTS) {
+        return stop("Oracle: no split fits under the cap.", true);
+      }
+      const parts = Math.max(2, needed);
+      // A split costs `parts` attempts, so only propose one that fits.
+      if (budgetLeft < parts) {
+        return stop("Oracle: not enough budget left to present a full split.", true);
+      }
+      if (ctx.retriesSpent >= 3) {
+        return stop("Oracle: splits already attempted and rejected.", true);
+      }
+      return {
+        action: {
+          kind: "SPLIT_AMOUNT",
+          parts,
+          perPartPaise: Math.ceil(cause.attemptedPaise / parts),
+        },
+        dayOffset: 1,
+        rationale: `Oracle: splitting into ${parts} parts is the only presentment that clears the cap.`,
+      };
+    }
+
+    if (cause.kind === "PRE_DEBIT_NOTICE_FAILED") {
+      if (ctx.nudgesSent >= 3) {
+        return stop("Oracle: notice re-sent three times without landing.", true);
+      }
+      return {
+        action: {
+          kind: "RESEND_NOTICE",
+          channel: "sms",
+          retryDayOffset: 1 + RESPONSE.NOTICE_MIN_RETRY_DELAY_DAYS,
+        },
+        dayOffset: 1,
+        rationale: "Oracle: re-sending the notice restores eligibility.",
+      };
+    }
+
+    if (cause.kind === "ISSUER_DOWNTIME") {
+      // Knows the outage schedule exactly, so it waits precisely long enough.
+      // On a repeat it skips forward past the days it has already burned.
+      const firstOffset = 1 + ctx.retriesSpent;
+      for (let offset = firstOffset; offset <= 12; offset++) {
+        const day = start + offset;
+        if (day > SIM.HORIZON_DAYS) break;
+        if (!isBankDown(downtime, c.issuerBank, day)) {
+          return retryAt(offset, 1, `Oracle: ${c.issuerBank} is back up on day ${day}.`);
+        }
+      }
+      return stop("Oracle: outage outlasts the horizon.", true);
+    }
+
+    if (cause.kind === "TECHNICAL_DECLINE") {
+      const p =
+        RESPONSE.TECHNICAL_DECLINE_RETRY_SUCCESS *
+        RESPONSE.TECHNICAL_DECLINE_DECAY ** ctx.retriesSpent;
+      if (p < WORTH_IT) {
+        return stop("Oracle: retry odds have decayed; not actually transient.", true);
+      }
+      return retryAt(
+        1 + ctx.retriesSpent,
+        p,
+        `Oracle: transient fault, retry worth ${(p * 100).toFixed(0)}%.`,
+      );
+    }
+
+    if (cause.kind === "DO_NOT_HONOUR") {
+      // The decisive advantage: the oracle knows which of these are hard
+      // refusals and spends nothing on them. Every other policy has to guess.
+      if (!isSoftDoNotHonour(failure)) {
+        return stop("Oracle: hard refusal. No retry can clear it.", true);
+      }
+      const p =
+        RESPONSE.DO_NOT_HONOUR_SOFT_RETRY_SUCCESS *
+        RESPONSE.TECHNICAL_DECLINE_DECAY ** ctx.retriesSpent;
+      if (p < WORTH_IT) {
+        return stop("Oracle: soft refusal did not clear and odds have decayed.", true);
+      }
+      return retryAt(
+        2 + ctx.retriesSpent,
+        p,
+        `Oracle: soft refusal, retry worth ${(p * 100).toFixed(0)}%.`,
+      );
+    }
+
+    // INSUFFICIENT_FUNDS: rank every remaining day by TRUE P(funds) and take
+    // the next-best one not yet burned. Retrying the same peak day repeatedly
+    // would waste the budget on one draw of the same coin.
+    const ranked: { offset: number; p: number }[] = [];
+    for (let offset = 1; offset <= 20; offset++) {
+      const day = start + offset;
+      if (day > SIM.HORIZON_DAYS) break;
+      if (day >= c.mandateExpiryDay) break;
+      if (c.revokedOnDay !== null && day >= c.revokedOnDay) break;
+      ranked.push({ offset, p: truePFunds(failure, day) });
+    }
+    ranked.sort((a, b) => b.p - a.p || a.offset - b.offset);
+
+    const pick = ranked[ctx.retriesSpent];
+    if (!pick || pick.p < WORTH_IT) {
+      return stop("Oracle: no window with a worthwhile balance remains.", true);
+    }
+    return retryAt(
+      pick.offset,
+      pick.p,
+      `Oracle: true P(funds) is ${(pick.p * 100).toFixed(0)}% on day ${start + pick.offset}, the best window left.`,
+    );
+  },
+};
+
+// ---------------------------------------------------------------------------
+
+export const ALL_POLICIES: readonly Policy[] = [
+  B0_NONE,
+  B1_FIXED,
+  B2_BACKOFF,
+  B3_LEDGER,
+  B4_ORACLE,
+];
+
+/** Convenience for tests and the dashboard. */
+export function policyById(id: string): Policy {
+  const p = ALL_POLICIES.find((x) => x.id === id);
+  if (!p) throw new Error(`Unknown policy "${id}"`);
+  return p;
+}
+
+/** Re-exported so the runner does not need to reach into the simulator. */
+export { merchantMandateRecord, isTerminal };
+export type { RecoveryAction };

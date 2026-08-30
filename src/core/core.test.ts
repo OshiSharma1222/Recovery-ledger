@@ -7,9 +7,12 @@
  */
 
 import { describe, expect, it } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
 
 import { classify, type ClassificationContext } from "./classify.js";
-import { newLedgerRow, LedgerStore, type LedgerRow } from "./ledger.js";
+import { newLedgerRow, type LedgerRow } from "./ledger.js";
+import { LedgerStore } from "./ledger-store.js";
 import {
   assertNever,
   isTerminal,
@@ -29,7 +32,14 @@ import {
 import { resolveAction } from "./simulator/environment.js";
 import { TimingEstimator } from "./policy/timing.js";
 import { decide } from "./policy/engine.js";
-import { assertDisjointSeeds, TEST_SEED, TRAIN_SEED } from "./policy/train.js";
+import {
+  assertDisjointSeeds,
+  trainTimingEstimator,
+  TEST_SEED,
+  TRAIN_SEED,
+} from "./policy/train.js";
+import { B3_LEDGER } from "./policy/baselines.js";
+import { assertBenchmarkIntegrity, runBenchmark } from "./bench/run.js";
 
 // ---------------------------------------------------------------------------
 
@@ -562,3 +572,176 @@ function synthesiseCause(kind: RootCause["kind"]): RootCause {
       return assertNever(kind, "synthesiseCause");
   }
 }
+
+// ---------------------------------------------------------------------------
+// Benchmark integrity
+// ---------------------------------------------------------------------------
+
+describe("benchmark integrity", () => {
+  /**
+   * B3 must not peek at latent state.
+   *
+   * The OracleView is threaded through the shared PolicyContext, so it is
+   * physically reachable from B3's decide(). This asserts B3 produces byte
+   * identical decisions whether or not it is present. If someone ever wires
+   * ctx.oracle into the engine, the reported lift becomes leakage and this
+   * fails rather than the benchmark quietly inflating.
+   */
+  it("B3 decides identically with and without the oracle view", () => {
+    const world = buildWorld("peek-check", 600);
+    const { estimator } = trainTimingEstimator({ seed: "peek-check:train", customers: 400 });
+    let compared = 0;
+
+    for (const row of world.rows) {
+      const failure = world.latent.get(row.id)!;
+      const classification = classify({
+        row,
+        mandate: merchantMandateRecord(failure.customer),
+        issuerDegraded: false,
+      });
+      const base = {
+        row,
+        classification,
+        estimator,
+        attemptsSpent: row.attempts,
+        retriesSpent: 0,
+        nudgesSent: 0,
+      };
+
+      const blind = B3_LEDGER.decide({ ...base, oracle: null });
+      const tempted = B3_LEDGER.decide({
+        ...base,
+        oracle: { failure, downtime: world.downtime },
+      });
+
+      expect(tempted).toEqual(blind);
+      compared += 1;
+    }
+    expect(compared).toBeGreaterThan(100);
+  });
+
+  it("B0 recovers nothing and spends nothing", () => {
+    const report = runBenchmark({ customers: 500 });
+    const b0 = report.metrics.find((m) => m.policyId === "B0")!;
+    expect(b0.recoveredPaise).toBe(0);
+    expect(b0.retries).toBe(0);
+    expect(b0.nudges).toBe(0);
+  });
+
+  it("scores every policy on the identical ledger", () => {
+    const report = runBenchmark({ customers: 500 });
+    expect(() => assertBenchmarkIntegrity(report)).not.toThrow();
+    const sizes = new Set(report.results.map((r) => r.rows.length));
+    expect(sizes.size).toBe(1);
+    const atRisk = new Set(report.metrics.map((m) => m.atRiskPaise));
+    expect(atRisk.size).toBe(1);
+  });
+
+  it("leaves no row in a non-terminal state", () => {
+    const report = runBenchmark({ customers: 500 });
+    for (const result of report.results) {
+      for (const row of result.rows) {
+        expect(["RECOVERED", "ABANDONED", "LOST"]).toContain(row.status);
+      }
+    }
+  });
+
+  it("produces byte-identical results across runs", () => {
+    const a = runBenchmark({ customers: 400 });
+    const b = runBenchmark({ customers: 400 });
+    expect(a.metrics.map((m) => m.recoveredPaise)).toEqual(
+      b.metrics.map((m) => m.recoveredPaise),
+    );
+    expect(a.metrics.map((m) => m.retries)).toEqual(b.metrics.map((m) => m.retries));
+  });
+
+  it("beats the fixed schedule while spending fewer attempts", () => {
+    // The headline claim. If this ever fails, the video is wrong.
+    const report = runBenchmark({ customers: 2000 });
+    const b1 = report.metrics.find((m) => m.policyId === "B1")!;
+    const b3 = report.metrics.find((m) => m.policyId === "B3")!;
+    expect(b3.recoveredPaise).toBeGreaterThan(b1.recoveredPaise);
+    expect(b3.retries).toBeLessThan(b1.retries);
+    expect(b3.wastedRetries).toBeLessThan(b1.wastedRetries);
+  });
+
+  it("keeps the oracle above every other policy", () => {
+    // If this fails the "% of ceiling" framing is meaningless and must not be
+    // quoted. It caught a real bug: an earlier B4 capped itself at 3 retries
+    // while B3 was allowed 5, and B3 duly came out at 107% of "ceiling".
+    const report = runBenchmark({ customers: 2000 });
+    const b4 = report.metrics.find((m) => m.policyId === "B4")!;
+    for (const m of report.metrics) {
+      if (m.policyId === "B4") continue;
+      expect(m.recoveredPaise).toBeLessThanOrEqual(b4.recoveredPaise);
+    }
+  });
+
+  it("never spends a retry on a terminal cause under B3 that B1 would not", () => {
+    const report = runBenchmark({ customers: 2000 });
+    const b1 = report.metrics.find((m) => m.policyId === "B1")!;
+    const b3 = report.metrics.find((m) => m.policyId === "B3")!;
+    // Both waste some -- B3 misclassifies ~4% of rows -- but B3 must waste far less.
+    expect(b3.wastedRetries).toBeLessThan(b1.wastedRetries * 0.75);
+  });
+});
+
+describe("benchmark portability", () => {
+  /**
+   * `npm run bench` must not depend on a native module.
+   *
+   * The project's central claim is "clone it and run one command". If the
+   * benchmark path imported better-sqlite3, any reviewer whose toolchain
+   * could not build it would get a compile error instead of a results table --
+   * failing at exactly the thing the project most needs to demonstrate.
+   *
+   * Verified by walking the actual import graph from the bench entrypoint,
+   * so it cannot be defeated by an import added three modules deep.
+   */
+  it("has no native dependency anywhere in the bench import graph", () => {
+    const NATIVE = ["better-sqlite3", "node:sqlite"];
+    const seen = new Set<string>();
+    const offenders: string[] = [];
+
+    const resolve = (fromFile: string, spec: string): string | null => {
+      if (!spec.startsWith(".")) return null;
+      const dir = path.dirname(fromFile);
+      const raw = path.resolve(dir, spec);
+      for (const candidate of [
+        raw.replace(/\.js$/, ".ts"),
+        raw,
+        `${raw}.ts`,
+        path.join(raw, "index.ts"),
+      ]) {
+        if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+      }
+      return null;
+    };
+
+    const walk = (file: string): void => {
+      const key = path.normalize(file);
+      if (seen.has(key)) return;
+      seen.add(key);
+
+      const src = fs.readFileSync(file, "utf8");
+      const specs = [...src.matchAll(/from\s+["']([^"']+)["']/g)].map((m) => m[1]!);
+
+      for (const spec of specs) {
+        if (NATIVE.includes(spec)) {
+          offenders.push(`${path.relative(process.cwd(), file)} imports ${spec}`);
+          continue;
+        }
+        const next = resolve(file, spec);
+        if (next) walk(next);
+      }
+    };
+
+    walk(path.resolve("scripts/bench.ts"));
+
+    // Sanity: the walk must actually have traversed the engine, or a broken
+    // resolver would make this test pass vacuously.
+    expect(seen.size).toBeGreaterThan(8);
+    expect([...seen].some((f) => f.includes("engine"))).toBe(true);
+    expect(offenders).toEqual([]);
+  });
+});

@@ -8,7 +8,7 @@
  * dashboard reads.
  */
 
-import { LedgerStore } from "../src/core/ledger.js";
+import { LedgerStore } from "../src/core/ledger-store.js";
 import { assertParamsWellFormed, SIM } from "../src/core/simulator/params.js";
 import { buildWorld } from "../src/core/simulator/population.js";
 import { formatPaise, type RootCauseKind } from "../src/core/taxonomy.js";
