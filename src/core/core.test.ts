@@ -40,6 +40,14 @@ import {
 } from "./policy/train.js";
 import { B3_LEDGER } from "./policy/baselines.js";
 import { assertBenchmarkIntegrity, runBenchmark } from "./bench/run.js";
+import { assessAllCases, loadDisputeCases } from "./disputes/cases.js";
+import {
+  assessEvidence,
+  reasonCode,
+  EVIDENCE_LABELS,
+  type EvidenceKind,
+} from "./disputes/evidence.js";
+import { buildPrompt, draftRepresentment, templateLetter } from "./disputes/draft.js";
 
 // ---------------------------------------------------------------------------
 
@@ -743,5 +751,136 @@ describe("benchmark portability", () => {
     expect(seen.size).toBeGreaterThan(8);
     expect([...seen].some((f) => f.includes("engine"))).toBe(true);
     expect(offenders).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Lane 2: disputes
+// ---------------------------------------------------------------------------
+
+describe("dispute evidence engine", () => {
+  it("loads every hand-authored case against a real reason code", () => {
+    const cases = loadDisputeCases();
+    expect(cases.length).toBeGreaterThanOrEqual(6);
+    for (const c of cases) {
+      expect(() => reasonCode(c.reasonCodeId)).not.toThrow();
+      expect(Number.isInteger(c.amountPaise)).toBe(true);
+    }
+  });
+
+  it("treats a missing mandatory artifact as a wall, not a discount", () => {
+    // The distinction the whole gap analysis exists to make. A proportional
+    // penalty would produce a confident-looking 40% on a case the network
+    // will not even review.
+    const complete = assessEvidence("VISA_10_4", 5_000_00, [
+      "AUTH_LOG_3DS",
+      "AVS_CVV_RESULT",
+      "DEVICE_IP_MATCH",
+      "PRIOR_UNDISPUTED_TRANSACTIONS",
+      "DELIVERY_PROOF",
+    ]);
+    const blocked = assessEvidence("VISA_10_4", 5_000_00, [
+      "AVS_CVV_RESULT",
+      "DEVICE_IP_MATCH",
+      "PRIOR_UNDISPUTED_TRANSACTIONS",
+      "DELIVERY_PROOF",
+    ]);
+
+    expect(complete.blockingGaps).toHaveLength(0);
+    expect(blocked.blockingGaps).toHaveLength(1);
+    expect(blocked.winProbability).toBeLessThan(0.1);
+    expect(blocked.action.kind).toBe("DO_NOT_CONTEST");
+    // Losing one mandatory artifact must collapse the estimate, not shave it.
+    expect(blocked.winProbability).toBeLessThan(complete.winProbability / 4);
+  });
+
+  it("declines to contest when a complete packet still loses money", () => {
+    // Small amount, full evidence. The right answer is still to walk away.
+    const small = assessEvidence("VISA_13_6", 780_00, [
+      "REFUND_ISSUED_PROOF",
+      "REFUND_POLICY_ACCEPTED",
+      "CUSTOMER_CORRESPONDENCE",
+      "ORDER_RECORD",
+    ]);
+    expect(small.blockingGaps).toHaveLength(0);
+    expect(small.action.kind).toBe("DO_NOT_CONTEST");
+    expect(small.expectedValuePaise).toBeLessThanOrEqual(0);
+
+    // Same evidence, larger amount: now worth fighting.
+    const large = assessEvidence("VISA_13_6", 90_000_00, [
+      "REFUND_ISSUED_PROOF",
+      "REFUND_POLICY_ACCEPTED",
+      "CUSTOMER_CORRESPONDENCE",
+      "ORDER_RECORD",
+    ]);
+    expect(large.action.kind).toBe("CONTEST");
+  });
+
+  it("rises monotonically with evidence coverage", () => {
+    const base: EvidenceKind[] = ["DUPLICATE_ANALYSIS", "ORDER_RECORD"];
+    const more: EvidenceKind[] = [...base, "AUTH_LOG_3DS"];
+    const most: EvidenceKind[] = [...more, "CUSTOMER_CORRESPONDENCE"];
+    const p = (e: EvidenceKind[]) =>
+      assessEvidence("VISA_12_6", 20_000_00, e).winProbability;
+    expect(p(more)).toBeGreaterThan(p(base));
+    expect(p(most)).toBeGreaterThan(p(more));
+  });
+
+  it("folds disputes into the same ledger schema as failed debits", () => {
+    // The structural claim of the project. Nothing in ledger.ts changed to
+    // accommodate a second source.
+    const assessed = assessAllCases();
+    for (const { row } of assessed) {
+      expect(row.source).toBe("DISPUTE");
+      expect(["ABANDONED", "IN_PROGRESS"]).toContain(row.status);
+      expect(row.rationale.length).toBeGreaterThan(20);
+      expect(row.amountPaise).toBeGreaterThan(0);
+    }
+    expect(assessed.some((a) => a.assessment.action.kind === "CONTEST")).toBe(true);
+    expect(assessed.some((a) => a.assessment.action.kind === "DO_NOT_CONTEST")).toBe(true);
+  });
+
+  it("never cites evidence the merchant does not hold", () => {
+    // A representment referencing a document the acquirer cannot produce is
+    // worse than filing nothing.
+    for (const { dispute, assessment } of assessAllCases()) {
+      const letter = templateLetter(dispute, assessment);
+      for (const gap of assessment.gaps) {
+        expect(letter).not.toContain(EVIDENCE_LABELS[gap.kind]);
+      }
+    }
+  });
+
+  it("labels template drafts honestly and never calls the API implicitly", async () => {
+    const { dispute, assessment } = assessAllCases().find(
+      (c) => c.assessment.action.kind === "CONTEST",
+    )!;
+    const draft = await draftRepresentment(dispute, assessment);
+    // With no cache and no --live, this must be TEMPLATE with no model claimed.
+    expect(["TEMPLATE", "CACHE"]).toContain(draft.source);
+    if (draft.source === "TEMPLATE") expect(draft.model).toBeNull();
+    expect(draft.promptHash).toMatch(/^[0-9a-f]{16}$/);
+  });
+
+  it("refuses --live without a key rather than silently falling back", async () => {
+    const { dispute, assessment } = assessAllCases()[0]!;
+    const saved = process.env["ANTHROPIC_API_KEY"];
+    delete process.env["ANTHROPIC_API_KEY"];
+    try {
+      await expect(
+        draftRepresentment(dispute, assessment, { live: true }),
+      ).rejects.toThrow(/ANTHROPIC_API_KEY/);
+    } finally {
+      if (saved !== undefined) process.env["ANTHROPIC_API_KEY"] = saved;
+    }
+  });
+
+  it("keys the cache on the prompt so an edit invalidates exactly what it should", () => {
+    const [a, b] = assessAllCases();
+    const pa = buildPrompt(a!.dispute, a!.assessment);
+    const pb = buildPrompt(b!.dispute, b!.assessment);
+    expect(pa).not.toBe(pb);
+    // Same input must produce the same prompt, or the cache never hits.
+    expect(buildPrompt(a!.dispute, a!.assessment)).toBe(pa);
   });
 });

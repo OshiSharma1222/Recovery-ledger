@@ -1,0 +1,122 @@
+{
+  "_comment": "Hand-authored dispute cases. Not generated, not sampled from a simulator -- Lane 2 is deliberately thin and these nine cases exist to exercise every branch of the evidence engine: a clear contest, a clear abandon, a blocking gap, an EV-negative win, and the Lane 1 overlap. Amounts are integer paise.",
+  "cases": [
+    {
+      "id": "dsp_0001",
+      "reasonCodeId": "VISA_13_2",
+      "amountPaise": 4990000,
+      "customerId": "cust_000412",
+      "merchantNote": "Annual SaaS plan. Customer says they cancelled in-app before the renewal debit.",
+      "raisedOnDay": 6,
+      "available": [
+        "MANDATE_AUTHORISATION",
+        "CANCELLATION_RECORD",
+        "PRE_DEBIT_NOTICE_PROOF",
+        "TERMS_ACCEPTANCE_TIMESTAMP",
+        "USAGE_LOGS"
+      ],
+      "truth": "Cancellation was submitted four days AFTER the debit. The merchant is in the right and the record proves it."
+    },
+    {
+      "id": "dsp_0002",
+      "reasonCodeId": "VISA_13_2",
+      "amountPaise": 129900,
+      "customerId": "cust_001788",
+      "merchantNote": "OTT subscription. Customer cancelled, then was billed the next cycle.",
+      "available": ["MANDATE_AUTHORISATION", "USAGE_LOGS"],
+      "raisedOnDay": 11,
+      "truth": "The cancellation record is missing because support handled it over the phone and never logged it. The customer is probably right."
+    },
+    {
+      "id": "dsp_0003",
+      "reasonCodeId": "VISA_10_4",
+      "amountPaise": 2450000,
+      "customerId": "cust_002901",
+      "merchantNote": "Card-absent fraud claim on a first-time high-value order.",
+      "available": ["AVS_CVV_RESULT", "DELIVERY_PROOF"],
+      "raisedOnDay": 21,
+      "truth": "No 3DS authentication record. Liability never shifted, so this cannot be won."
+    },
+    {
+      "id": "dsp_0004",
+      "reasonCodeId": "VISA_12_6",
+      "amountPaise": 899000,
+      "customerId": "cust_000233",
+      "merchantNote": "Customer says they were charged twice on the same day.",
+      "available": [
+        "DUPLICATE_ANALYSIS",
+        "ORDER_RECORD",
+        "AUTH_LOG_3DS",
+        "CUSTOMER_CORRESPONDENCE"
+      ],
+      "raisedOnDay": 3,
+      "truth": "Two genuinely distinct orders placed 40 minutes apart, different line items. Highly winnable."
+    },
+    {
+      "id": "dsp_0005",
+      "reasonCodeId": "VISA_13_1",
+      "amountPaise": 349900,
+      "customerId": "cust_003310",
+      "merchantNote": "Digital course purchase; customer says they never got access.",
+      "available": ["ORDER_RECORD", "USAGE_LOGS", "TERMS_ACCEPTANCE_TIMESTAMP"],
+      "raisedOnDay": 14,
+      "truth": "Delivery proof is mandatory and absent. Usage logs show two logins, but without fulfilment confirmation the packet is incomplete."
+    },
+    {
+      "id": "dsp_0006",
+      "reasonCodeId": "VISA_13_6",
+      "amountPaise": 78000,
+      "customerId": "cust_004102",
+      "merchantNote": "Refund was approved but the customer disputed before it settled.",
+      "available": [
+        "REFUND_ISSUED_PROOF",
+        "REFUND_POLICY_ACCEPTED",
+        "CUSTOMER_CORRESPONDENCE",
+        "ORDER_RECORD"
+      ],
+      "raisedOnDay": 2,
+      "truth": "Complete evidence, but the amount is small enough that filing costs more than the expected recovery."
+    },
+    {
+      "id": "dsp_0007",
+      "reasonCodeId": "MC_4841",
+      "amountPaise": 1899000,
+      "customerId": "cust_000877",
+      "merchantNote": "Insurance premium debited after the customer says they lapsed the policy.",
+      "available": [
+        "MANDATE_AUTHORISATION",
+        "CANCELLATION_RECORD",
+        "USAGE_LOGS",
+        "TERMS_ACCEPTANCE_TIMESTAMP",
+        "CUSTOMER_CORRESPONDENCE"
+      ],
+      "raisedOnDay": 9,
+      "truth": "Full packet. The mandate was live and no cancellation was received before the debit."
+    },
+    {
+      "id": "dsp_0008",
+      "reasonCodeId": "MC_4837",
+      "amountPaise": 560000,
+      "customerId": "cust_005544",
+      "merchantNote": "Cardholder does not recognise a recurring SaaS charge.",
+      "available": [
+        "AUTH_LOG_3DS",
+        "PRIOR_UNDISPUTED_TRANSACTIONS",
+        "DEVICE_IP_MATCH",
+        "AVS_CVV_RESULT"
+      ],
+      "raisedOnDay": 17,
+      "truth": "Eleven prior undisputed debits on the same card and device. Almost certainly friendly fraud, and the history shows it."
+    },
+    {
+      "id": "dsp_0009",
+      "reasonCodeId": "VISA_13_3",
+      "amountPaise": 1250000,
+      "customerId": "cust_006201",
+      "merchantNote": "Customer says the delivered product did not match the listing.",
+      "available": ["ORDER_RECORD", "DELIVERY_PROOF"],
+      "raisedOnDay": 25,
+      "truth": "Thin packet on an inherently subjective code. Winnable in principle, marginal in practice."
+    }
+  ]
+}
