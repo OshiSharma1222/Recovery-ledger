@@ -5,6 +5,7 @@ import {
   daysSinceSalary,
   isBankDown,
   merchantMandateRecord,
+  MONTH_DAYS,
   type DowntimeSchedule,
   type LatentFailure,
 } from "../simulator/population.js";
@@ -105,6 +106,40 @@ export const B2_BACKOFF: Policy = {
       offset,
       0,
       `Exponential backoff: retry ${ctx.retriesSpent + 1} at +${offset}d.`,
+    );
+  },
+};
+
+export const B2T_TIMED: Policy = {
+  id: "B2T",
+  name: "Smart timing, cause-blind",
+  description:
+    "Uses the same learned timing model as B3 to pick the best retry day for " +
+    "every failure, but never classifies the cause, never nudges, and never " +
+    "stops early. A stand-in for commercial smart-retry products.",
+  usesOracle: false,
+  decide: (ctx) => {
+    if (ctx.retriesSpent >= 4) {
+      return stop("Timed schedule exhausted after 4 retries.");
+    }
+    const ranked: { offset: number; p: number }[] = [];
+    for (let offset = 1; offset <= 14; offset++) {
+      if (ctx.row.failedOnDay + offset > SIM.HORIZON_DAYS) break;
+      const dom = ((ctx.row.failedOnDay + offset) % MONTH_DAYS) + 1;
+      ranked.push({
+        offset,
+        p: ctx.estimator.probability("INSUFFICIENT_FUNDS", ctx.row.segment, dom),
+      });
+    }
+    ranked.sort((a, b) => b.p - a.p || a.offset - b.offset);
+    const pick = ranked[ctx.retriesSpent];
+    if (!pick) {
+      return stop("No retry window remains before the horizon.");
+    }
+    return retryAt(
+      pick.offset,
+      pick.p,
+      `Timed retry ${ctx.retriesSpent + 1} of 4 at +${pick.offset}d, the best remaining window for this segment.`,
     );
   },
 };
@@ -313,6 +348,7 @@ export const ALL_POLICIES: readonly Policy[] = [
   B0_NONE,
   B1_FIXED,
   B2_BACKOFF,
+  B2T_TIMED,
   B3_LEDGER,
   B4_ORACLE,
 ];

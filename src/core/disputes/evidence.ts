@@ -1,4 +1,5 @@
-import { formatPaise } from "../taxonomy.js";
+const inr = (paise: number): string =>
+  `₹${Math.round(paise / 100).toLocaleString("en-IN")}`;
 
 export type EvidenceKind =
   | "ORDER_RECORD"
@@ -109,7 +110,7 @@ export const REASON_CODES: Record<string, ReasonCode> = {
   VISA_10_4: {
     code: "10.4",
     network: "VISA",
-    title: "Other Fraud — Card Absent Environment",
+    title: "Other Fraud - Card Absent Environment",
     category: "FRAUD",
     responseWindowDays: 30,
     baseWinRate: 0.29,
@@ -301,26 +302,26 @@ export function assessEvidence(
     rationale =
       `${rc.network} ${rc.code} will not be reviewed without ${names}. ` +
       `This is not a weak case, it is an unwinnable one, and filing it costs ` +
-      `${formatPaise(DISPUTE_ECONOMICS.REPRESENTMENT_COST_PAISE)} to lose. ` +
+      `${inr(DISPUTE_ECONOMICS.REPRESENTMENT_COST_PAISE)} to lose. ` +
       `The fix is upstream: start capturing this artifact and these stop being losses.`;
   } else if (expectedValuePaise <= 0) {
     action = {
       kind: "DO_NOT_CONTEST",
-      reason: `expected value ${formatPaise(expectedValuePaise)} does not cover the cost of filing`,
+      reason: `expected value ${inr(expectedValuePaise)} does not cover the cost of filing`,
     };
     rationale =
-      `Evidence is complete enough to file, but at ${formatPaise(amountPaise)} and ` +
+      `Evidence is complete enough to file, but at ${inr(amountPaise)} and ` +
       `${(winProbability * 100).toFixed(0)}% win probability the expected recovery is ` +
-      `${formatPaise(Math.round(winProbability * amountPaise))}, against ` +
-      `${formatPaise(DISPUTE_ECONOMICS.REPRESENTMENT_COST_PAISE)} to contest. ` +
+      `${inr(Math.round(winProbability * amountPaise))}, against ` +
+      `${inr(DISPUTE_ECONOMICS.REPRESENTMENT_COST_PAISE)} to contest. ` +
       `Fighting this one loses money on average. Accept it and move on.`;
   } else {
     action = { kind: "CONTEST", confidence: winProbability };
     rationale =
       `Evidence covers ${(coverage * 100).toFixed(0)}% of what ${rc.network} ${rc.code} ` +
       `weighs, with every mandatory artifact on file. Win probability ` +
-      `${(winProbability * 100).toFixed(0)}% on ${formatPaise(amountPaise)} gives an expected ` +
-      `${formatPaise(expectedValuePaise)} net of filing costs. Worth contesting.` +
+      `${(winProbability * 100).toFixed(0)}% on ${inr(amountPaise)} gives an expected ` +
+      `${inr(expectedValuePaise)} net of filing costs. Worth contesting.` +
       (gaps.length > 0
         ? ` Still missing ${gaps.map((g) => g.label.toLowerCase()).join(", ")}, which would strengthen it.`
         : "");

@@ -1,4 +1,4 @@
-import { getReport } from "@/lib/data";
+import { getReport, normalizeSeed } from "@/lib/data";
 import {
   Card,
   Eyebrow,
@@ -8,8 +8,13 @@ import {
   StatRow,
 } from "@/components/ui";
 
-export default function BenchmarkPage() {
-  const report = getReport();
+export default async function BenchmarkPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ seed?: string }>;
+}) {
+  const seed = normalizeSeed((await searchParams).seed);
+  const report = getReport(seed);
   const metrics = report.metrics;
   const b1 = metrics.find((m) => m.policyId === "B1")!;
   const b3 = metrics.find((m) => m.policyId === "B3")!;
@@ -23,15 +28,14 @@ export default function BenchmarkPage() {
   return (
     <div className="space-y-8">
       <div>
-        <Eyebrow>Five policies, one seeded world</Eyebrow>
+        <Eyebrow>Six policies, one seeded world{seed ? ` · "${seed}"` : ""}</Eyebrow>
         <PageTitle>The proof</PageTitle>
         <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-sub">
           Every policy runs over the same population with the same attempt
           budget and the same classifications. Reproduce it with{" "}
           <code className="bg-linefaint px-1.5 py-0.5 font-mono text-[13px] text-ink">
             npm run bench
-          </code>{" "}
-          — no API key, no database, no network.
+          </code>. No API key, no database, no network.
         </p>
       </div>
 
@@ -131,7 +135,7 @@ export default function BenchmarkPage() {
                     </td>
                     <td className="px-4 py-3.5 text-right tabular-nums text-sub">
                       {m.ceilingCapture === null
-                        ? "—"
+                        ? "-"
                         : `${(m.ceilingCapture * 100).toFixed(1)}%`}
                     </td>
                     <td className="px-4 py-3.5 text-right tabular-nums text-sub">
@@ -145,7 +149,7 @@ export default function BenchmarkPage() {
                     <td className="px-4 py-3.5 text-right tabular-nums text-sub">
                       {Number.isFinite(m.retriesPerRecovery)
                         ? m.retriesPerRecovery.toFixed(2)
-                        : "—"}
+                        : "-"}
                     </td>
                     <td className="px-4 py-3.5 text-right tabular-nums text-sub">
                       {m.nudges.toLocaleString("en-IN")}
@@ -165,8 +169,8 @@ export default function BenchmarkPage() {
         <Card title="Why the oracle is here">
           <p className="text-sm leading-relaxed text-sub">
             A bare recovery rate invites the question &ldquo;out of
-            what?&rdquo;. {formatRupees(b3.unrecoverablePaise)} of this ledger —{" "}
-            {((b3.unrecoverablePaise / b3.atRiskPaise) * 100).toFixed(0)}% — is
+            what?&rdquo;. {formatRupees(b3.unrecoverablePaise)} of this ledger, or{" "}
+            {((b3.unrecoverablePaise / b3.atRiskPaise) * 100).toFixed(0)}%, is
             structurally unrecoverable: expired mandates, debits above the
             authorised cap, revocations, risk blocks. For those rows the
             probability of success is identically zero at every offset, for
@@ -175,7 +179,7 @@ export default function BenchmarkPage() {
           <p className="mt-3 text-sm leading-relaxed text-sub">
             B4 sees every latent variable and takes the best action available.
             It is a <strong className="text-ink">greedy</strong> oracle, not a
-            proven optimum — a very strong upper bound rather than a
+            proven optimum: a very strong upper bound rather than a
             mathematical one. Calling it optimal would be an overclaim.
           </p>
         </Card>
@@ -231,7 +235,7 @@ export default function BenchmarkPage() {
             a stated model of the world, not production reality
           </strong>
           . The parameters were frozen and committed before the policy engine
-          existed — verify with{" "}
+          existed. Verify with{" "}
           <code className="bg-linefaint px-1.5 py-0.5 font-mono text-xs text-ink">
             git log --follow -- src/core/simulator/params.ts
           </code>

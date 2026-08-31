@@ -11,7 +11,7 @@ byte-identical on any machine. No API key, no database, no network._
 | ledger | 891 failed debits, ₹72.57L at risk |
 | structurally unrecoverable | ₹19.16L (26.4%) |
 | training seed | `recovery-ledger-v1:train` (5,796 observations) |
-| evaluation seed | `recovery-ledger-v1:test` — disjoint from training |
+| evaluation seed | `recovery-ledger-v1:test`, disjoint from training |
 | classifier accuracy | 96.3% against ground truth |
 | attempt cap | 6 per row, applied identically to every policy |
 
@@ -22,7 +22,8 @@ byte-identical on any machine. No API key, no database, no network._
 | B0 | No recovery | ₹0 | 0.0% | 0.0% | 0 | 0 | -- | 0 | 0.0 |
 | B1 | Fixed retry (days 1/3/5) | ₹37.89L | 52.2% | 70.0% | 1,970 | 681 | 4.16 | 0 | 2.0 |
 | B2 | Exponential backoff | ₹40.26L | 55.5% | 74.4% | 2,397 | 908 | 4.76 | 0 | 2.1 |
-| **B3** | **Recovery Ledger** | **₹52.52L** | **72.4%** | **97.0%** | **1,384** | **338** | **2.23** | **1,330** | **5.3** |
+| B2T | Smart timing, cause-blind | ₹42.13L | 58.1% | 77.9% | 2,236 | 908 | 4.30 | 0 | 7.8 |
+| **B3** | **Recovery Ledger** | **₹51.89L** | **71.5%** | **95.9%** | **1,369** | **338** | **2.23** | **321** | **5.3** |
 | B4 | Oracle (ceiling) | ₹54.12L | 74.6% | 100.0% | 1,267 | 280 | 1.96 | 509 | 4.5 |
 
 **Columns.** `recovered` is money returned. `rate` is that as a share of all
@@ -30,29 +31,29 @@ rupees at risk. `of ceiling` is the share of what the oracle managed.
 `retries` counts debit attempts beyond the original failed presentment;
 `wasted` is the subset of those spent on rows whose true cause was terminal.
 `per win` is retries per successful recovery. `nudges` counts customer-facing
-messages — the annoyance proxy. `days` is mean time from failure to money
+messages, the annoyance proxy. `days` is mean time from failure to money
 landing.
 
 ## Reading this
 
 Against the fixed day-1/3/5 schedule almost every dunning stack ships with,
-the Recovery Ledger recovers +38.6% more money (₹52.52L vs ₹37.89L)
-while spending 29.7% fewer retries and 50.4% fewer
+the Recovery Ledger recovers +36.9% more money (₹51.89L vs ₹37.89L)
+while spending 30.5% fewer retries and 50.4% fewer
 attempts on rows that could never have been recovered.
-It captures 97.0% of what a policy with perfect knowledge
+It captures 95.9% of what a policy with perfect knowledge
 of every latent variable managed. 100.0% is the ceiling, not 100%:
 ₹19.16L of this ledger is structurally unrecoverable.
 
 ## Why the oracle is here
 
 Reporting a bare recovery rate invites the question "out of what?". Roughly
-26% of this ledger is structurally unrecoverable — expired mandates,
+26% of this ledger is structurally unrecoverable: expired mandates,
 debits above the authorised cap, customer revocations, risk blocks. For those
 rows the probability of success is identically zero at every offset, for every
 policy, forever. No amount of retrying moves them.
 
-B4 sees every latent variable — salary day, true balance curve, mandate state,
-responsiveness, the downtime schedule — and takes the best action available.
+B4 sees every latent variable (salary day, true balance curve, mandate state,
+responsiveness, the downtime schedule) and takes the best action available.
 It is a **greedy** oracle, not a proven optimum: it does not solve the
 multi-step scheduling problem exactly, so it is a very strong upper bound
 rather than a mathematical one. Quoting it as "optimal" would be an overclaim.

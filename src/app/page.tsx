@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { getLedger, getSummary } from "@/lib/data";
+import { getLedger, getSummary, normalizeSeed } from "@/lib/data";
 import {
   ActionBadge,
   CauseBadge,
@@ -12,20 +12,25 @@ import {
   StatusBadge,
 } from "@/components/ui";
 
-export default function LedgerPage() {
-  const ledger = getLedger();
-  const summary = getSummary();
+export default async function LedgerPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ seed?: string }>;
+}) {
+  const seed = normalizeSeed((await searchParams).seed);
+  const ledger = getLedger(seed);
+  const summary = getSummary(seed);
   const rows = [...ledger].sort((a, b) => b.row.amountPaise - a.row.amountPaise);
 
   return (
     <div className="space-y-8">
       <div>
-        <Eyebrow>Lane 1 + Lane 2</Eyebrow>
+        <Eyebrow>Lane 1 + Lane 2{seed ? ` · world "${seed}"` : ""}</Eyebrow>
         <PageTitle>The ledger</PageTitle>
         <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-sub">
           Every rupee this merchant is owed and has not got. Money that was
-          never captured — failed recurring debits — and money that was captured
-          and clawed back — disputes — are two <em>sources</em> feeding one
+          never captured (failed recurring debits) and money that was captured
+          and clawed back (disputes) are two <em>sources</em> feeding one
           schema and one policy interface.
         </p>
       </div>
@@ -79,7 +84,7 @@ export default function LedgerPage() {
                 <tr key={row.id} className="transition-colors hover:bg-paper">
                   <td className="px-5 py-3">
                     <Link
-                      href={`/row/${row.id}`}
+                      href={`/row/${row.id}${seed ? `?seed=${encodeURIComponent(seed)}` : ""}`}
                       className="font-mono text-xs text-ink underline decoration-line underline-offset-4 hover:decoration-ink"
                     >
                       {row.id}
@@ -98,7 +103,7 @@ export default function LedgerPage() {
                     {classification ? (
                       <CauseBadge cause={classification.cause.kind} />
                     ) : (
-                      <span className="text-xs text-faint">—</span>
+                      <span className="text-xs text-faint">-</span>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -120,7 +125,7 @@ export default function LedgerPage() {
       </div>
 
       <p className="max-w-2xl text-[13px] leading-relaxed text-faint">
-        Root causes in red are terminal — no retry can ever succeed on them.
+        Root causes in red are terminal: no retry can ever succeed on them.
         Actions in amber are decisions to stop, not failures to recover.
       </p>
     </div>

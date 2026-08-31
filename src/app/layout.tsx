@@ -43,6 +43,12 @@ export default function RootLayout({
                 Ledger
               </Link>
               <Link
+                href="/replay"
+                className="text-paperdim transition-colors hover:text-white"
+              >
+                Replay
+              </Link>
+              <Link
                 href="/benchmark"
                 className="text-paperdim transition-colors hover:text-white"
               >
@@ -57,7 +63,7 @@ export default function RootLayout({
         <footer className="border-t border-line">
           <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-2 px-6 py-4">
             <span className="font-mono text-[11px] text-faint">
-              npm run bench — seeded end to end, byte-identical on any machine
+              npm run bench · seeded end to end, byte-identical on any machine
             </span>
             <span className="font-mono text-[11px] text-faint">
               params frozen at 551c340

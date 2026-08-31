@@ -1,7 +1,8 @@
 import { assessAllCases } from "../src/core/disputes/cases.js";
 import { draftRepresentment } from "../src/core/disputes/draft.js";
 import { reasonCode, DISPUTE_ECONOMICS } from "../src/core/disputes/evidence.js";
-import { formatPaise } from "../src/core/taxonomy.js";
+const inr = (paise: number): string =>
+  `₹${Math.round(paise / 100).toLocaleString("en-IN")}`;
 
 function wrap(text: string, width: number, indent: string): string {
   const out: string[] = [];
@@ -27,7 +28,10 @@ async function main(): Promise<void> {
     `  ${cases.length} hand-authored cases. Same ledger, same statuses, different action set.`,
   );
   console.log(
-    `  Cost to file one representment: ${formatPaise(DISPUTE_ECONOMICS.REPRESENTMENT_COST_PAISE)}`,
+    `  Cost to file one representment: ${inr(DISPUTE_ECONOMICS.REPRESENTMENT_COST_PAISE)} (stated assumption)`,
+  );
+  console.log(
+    "  Win-rate priors and evidence weights are stated assumptions, not measurements.",
   );
   console.log("");
 
@@ -53,7 +57,7 @@ async function main(): Promise<void> {
       `  ${dispute.id}   ${rc.network} ${rc.code}  ${rc.title}`,
     );
     console.log(
-      `    amount      ${formatPaise(dispute.amountPaise).padEnd(16)} coverage ${(assessment.coverage * 100).toFixed(0)}%   win ${(assessment.winProbability * 100).toFixed(0)}%   EV ${formatPaise(assessment.expectedValuePaise)}`,
+      `    amount      ${inr(dispute.amountPaise).padEnd(16)} coverage ${(assessment.coverage * 100).toFixed(0)}%   win ${(assessment.winProbability * 100).toFixed(0)}%   EV ${inr(assessment.expectedValuePaise)}`,
     );
 
     if (assessment.blockingGaps.length > 0) {
@@ -75,13 +79,13 @@ async function main(): Promise<void> {
 
   console.log("  " + "-".repeat(78));
   console.log(
-    `  ${contested} contested, ${dropped} dropped, out of ${formatPaise(atRisk)} disputed.`,
+    `  ${contested} contested, ${dropped} dropped, out of ${inr(atRisk)} disputed.`,
   );
   console.log(
-    `  Chasing only the ${formatPaise(chased)} worth chasing, and not spending`,
+    `  Chasing only the ${inr(chased)} worth chasing, and not spending`,
   );
   console.log(
-    `  ${formatPaise(savedFiling)} to lose the rest. Same thesis as Lane 1: the hard part`,
+    `  ${inr(savedFiling)} to lose the rest. Same thesis as Lane 1: the hard part`,
   );
   console.log("  is knowing what not to chase.");
   console.log("");

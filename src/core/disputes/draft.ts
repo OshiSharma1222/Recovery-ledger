@@ -37,7 +37,7 @@ export function buildPrompt(
     `You are drafting a chargeback representment letter for an Indian merchant.`,
     ``,
     `Network: ${rc.network}`,
-    `Reason code: ${rc.code} — ${rc.title}`,
+    `Reason code: ${rc.code} (${rc.title})`,
     `Category: ${rc.category}`,
     `Disputed amount: ${formatPaise(dispute.amountPaise)}`,
     `Response window: ${rc.responseWindowDays} days`,

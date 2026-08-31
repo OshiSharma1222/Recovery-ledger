@@ -35,6 +35,8 @@ const NUDGE_COST_PAISE = 900;
 
 const MIN_EV_RATIO = 0.02;
 
+const CONTACT_CAP = 2;
+
 const LOW_CONFIDENCE = 0.5;
 
 const CHANNEL_BY_INSTRUMENT: Record<LedgerRow["instrumentType"], NudgeChannel> = {
@@ -62,6 +64,13 @@ export function decide(input: PolicyInput): Decision {
       return decideInsufficientFunds(input);
 
     case "MANDATE_EXPIRED": {
+      if (input.nudgesSent >= CONTACT_CAP) {
+        return {
+          action: { kind: "ABANDON", winBack: true },
+          dayOffset: 0,
+          rationale: `Contact budget spent: ${input.nudgesSent} renewal asks have gone unanswered. A third message risks the relationship for a decayed chance; flagged for win-back instead.`,
+        };
+      }
       const ev = expectedNudgeValue(row.amountPaise, RESPONSE.MANDATE_RENEWAL_FACTOR);
       if (ev < row.amountPaise * MIN_EV_RATIO) {
         return {
@@ -106,6 +115,13 @@ export function decide(input: PolicyInput): Decision {
       };
 
     case "CARD_EXPIRED": {
+      if (input.nudgesSent >= CONTACT_CAP) {
+        return {
+          action: { kind: "ABANDON", winBack: true },
+          dayOffset: 0,
+          rationale: `Contact budget spent: ${input.nudgesSent} instrument-update asks have gone unanswered. Stopping rather than spamming; flagged for win-back.`,
+        };
+      }
       const ev = expectedNudgeValue(row.amountPaise, RESPONSE.INSTRUMENT_UPDATE_FACTOR);
       if (ev < row.amountPaise * MIN_EV_RATIO) {
         return {
@@ -133,6 +149,13 @@ export function decide(input: PolicyInput): Decision {
       };
 
     case "PRE_DEBIT_NOTICE_FAILED": {
+      if (input.nudgesSent >= CONTACT_CAP) {
+        return {
+          action: { kind: "ABANDON", winBack: true },
+          dayOffset: 0,
+          rationale: `Contact budget spent: the notice has been re-sent ${input.nudgesSent} times without landing. Stopping.`,
+        };
+      }
       const retryOffset = 1 + RESPONSE.NOTICE_MIN_RETRY_DELAY_DAYS;
       return {
         action: {
@@ -188,7 +211,7 @@ export function decide(input: PolicyInput): Decision {
       }
 
       if (classification.confidence < LOW_CONFIDENCE && attemptsSpent >= 1) {
-        if (row.amountPaise >= 5_000_00) {
+        if (row.amountPaise >= 5_000_00 && input.nudgesSent === 0) {
           return {
             action: { kind: "ESCALATE", note: "unexplained decline on a high-value mandate" },
             dayOffset: 2,
@@ -198,7 +221,10 @@ export function decide(input: PolicyInput): Decision {
         return {
           action: { kind: "ABANDON", winBack: true },
           dayOffset: 0,
-          rationale: `Unexplained decline with low classifier confidence (${pct(classification.confidence)}) on ${paise(row.amountPaise)}. Not worth further attempts at this value.`,
+          rationale:
+            input.nudgesSent > 0
+              ? `Escalated once already without recovery. A second collections contact on the same decline is spam, not strategy. Stopping.`
+              : `Unexplained decline with low classifier confidence (${pct(classification.confidence)}) on ${paise(row.amountPaise)}. Not worth further attempts at this value.`,
         };
       }
 

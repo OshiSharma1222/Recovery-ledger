@@ -14,7 +14,8 @@
     "test": "vitest run",
     "decide": "tsx scripts/decide.ts",
     "prove:exhaustive": "bash scripts/prove-exhaustiveness.sh",
-    "disputes": "tsx scripts/disputes.ts"
+    "disputes": "tsx scripts/disputes.ts",
+    "bench:sweep": "tsx scripts/bench.ts --sweep=20"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",

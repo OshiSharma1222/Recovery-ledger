@@ -812,3 +812,28 @@ describe("dispute evidence engine", () => {
     expect(buildPrompt(a!.dispute, a!.assessment)).toBe(pa);
   });
 });
+
+describe("bounded contact", () => {
+  it("never sends more than two nudges to any customer under B3", () => {
+    const report = runBenchmark({ customers: 2000 });
+    const b3 = report.results.find((r) => r.policyId === "B3")!;
+    for (const row of b3.rows) {
+      expect(row.nudges).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it("beats smart timing alone, with far less waste", () => {
+    const report = runBenchmark({ customers: 2000 });
+    const b2t = report.metrics.find((m) => m.policyId === "B2T")!;
+    const b3 = report.metrics.find((m) => m.policyId === "B3")!;
+    expect(b3.recoveredPaise).toBeGreaterThan(b2t.recoveredPaise);
+    expect(b3.wastedRetries).toBeLessThan(b2t.wastedRetries * 0.6);
+  });
+
+  it("keeps smart timing above the dumb schedules", () => {
+    const report = runBenchmark();
+    const get = (id: string) => report.metrics.find((m) => m.policyId === id)!;
+    expect(get("B2T").recoveredPaise).toBeGreaterThan(get("B1").recoveredPaise);
+    expect(get("B2T").recoveredPaise).toBeGreaterThan(get("B2").recoveredPaise);
+  });
+});

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { getRow } from "@/lib/data";
+import { getRow, normalizeSeed } from "@/lib/data";
 import {
   ActionBadge,
   Card,
@@ -13,11 +13,14 @@ import { EVIDENCE_LABELS, reasonCode } from "@/core/disputes/evidence";
 
 export default async function RowPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ seed?: string }>;
 }) {
   const { id } = await params;
-  const view = getRow(id);
+  const seed = normalizeSeed((await searchParams).seed);
+  const view = getRow(id, seed);
   if (!view) notFound();
 
   const { row, classification, causeDescription, dispute } = view;
@@ -78,7 +81,7 @@ export default async function RowPage({
               <ul className="mt-4 space-y-1.5 border-t border-linefaint pt-3">
                 {classification.evidence.map((e) => (
                   <li key={e} className="flex gap-2 text-[13px] text-sub">
-                    <span className="text-faint">—</span>
+                    <span className="text-faint">-</span>
                     <span>{e}</span>
                   </li>
                 ))}
@@ -138,7 +141,7 @@ export default async function RowPage({
                   </dd>
                 </div>
                 <div>
-                  <dt className="inline text-faint">win probability </dt>
+                  <dt className="inline text-faint">win probability (assumed prior) </dt>
                   <dd className="inline font-semibold tabular-nums text-ink">
                     {(dispute.assessment.winProbability * 100).toFixed(0)}%
                   </dd>
