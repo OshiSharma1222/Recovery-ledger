@@ -118,6 +118,8 @@ not a claim, and it is the main reason this project is TypeScript rather than Py
 
 ## Architecture
 
+Full architecture documentation: [docs/DESIGN.md](docs/DESIGN.md).
+
 ```
   recurring debits ---.
                        \
