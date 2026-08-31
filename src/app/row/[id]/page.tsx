@@ -23,34 +23,39 @@ export default async function RowPage({
   const { row, classification, causeDescription, dispute } = view;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <Link href="/" className="text-sm text-indigo-600 hover:underline">
-          ← Ledger
+        <Link
+          href="/"
+          className="text-[13px] font-medium text-sub transition-colors hover:text-ink"
+        >
+          ← Back to the ledger
         </Link>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h1 className="font-mono text-xl font-semibold">{row.id}</h1>
-          <StatusBadge status={row.status} />
-          <span className="text-xl font-semibold tabular-nums">
+        <div className="mt-3 flex flex-wrap items-baseline gap-x-5 gap-y-2">
+          <h1 className="font-mono text-[22px] font-medium tracking-tight text-ink">
+            {row.id}
+          </h1>
+          <span className="text-[22px] font-semibold tabular-nums tracking-tight">
             {formatRupees(row.amountPaise)}
           </span>
+          <StatusBadge status={row.status} />
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card title="What the gateway said">
-            <div className="flex items-center gap-3">
-              <code className="rounded bg-slate-100 px-2 py-1 font-mono text-sm text-slate-800">
+            <div className="flex flex-wrap items-center gap-3">
+              <code className="bg-linefaint px-2.5 py-1 font-mono text-[13px] text-ink">
                 {row.rawCode}
               </code>
-              <span className="text-sm text-slate-500">
+              <span className="text-[13px] text-faint">
                 {row.source === "DISPUTE"
                   ? "network reason code"
                   : "raw reason code, exactly as received"}
               </span>
             </div>
-            <p className="mt-3 text-sm text-slate-600">
+            <p className="mt-3 text-sm leading-relaxed text-sub">
               This string is all a real merchant gets. Everything below is
               inferred from it plus data the merchant already holds.
             </p>
@@ -58,20 +63,23 @@ export default async function RowPage({
 
           {classification && (
             <Card title="What it actually means">
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-4">
                 <CauseBadge cause={classification.cause.kind} />
-                <span className="text-sm text-slate-500">
+                <span className="text-[13px] text-faint">
                   classifier confidence{" "}
-                  <strong className="text-slate-700">
+                  <strong className="font-semibold text-ink">
                     {(classification.confidence * 100).toFixed(0)}%
                   </strong>
                 </span>
               </div>
-              <p className="mt-3 text-sm text-slate-700">{causeDescription}</p>
-              <ul className="mt-3 space-y-1">
+              <p className="mt-3 text-sm leading-relaxed text-sub">
+                {causeDescription}
+              </p>
+              <ul className="mt-4 space-y-1.5 border-t border-linefaint pt-3">
                 {classification.evidence.map((e) => (
-                  <li key={e} className="text-sm text-slate-600">
-                    <span className="text-slate-400">•</span> {e}
+                  <li key={e} className="flex gap-2 text-[13px] text-sub">
+                    <span className="text-faint">—</span>
+                    <span>{e}</span>
                   </li>
                 ))}
               </ul>
@@ -80,81 +88,85 @@ export default async function RowPage({
 
           {dispute && (
             <Card title="Evidence gap analysis">
-              <div className="mb-4 text-sm text-slate-600">
+              <p className="mb-5 text-sm leading-relaxed text-sub">
                 {reasonCode(dispute.dispute.reasonCodeId).note}
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+              </p>
+              <div className="grid gap-5 sm:grid-cols-2">
                 <div>
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                  <h3 className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-good">
                     On file
                   </h3>
-                  <ul className="space-y-1">
+                  <ul className="space-y-1.5">
                     {dispute.assessment.present.map((k) => (
-                      <li key={k} className="text-sm text-slate-700">
-                        ✓ {EVIDENCE_LABELS[k]}
+                      <li key={k} className="flex gap-2 text-[13px] text-sub">
+                        <span className="text-good">✓</span>
+                        <span>{EVIDENCE_LABELS[k]}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
                 <div>
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-rose-700">
+                  <h3 className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-bad">
                     Missing
                   </h3>
                   {dispute.assessment.gaps.length === 0 ? (
-                    <p className="text-sm text-slate-500">Nothing missing.</p>
+                    <p className="text-[13px] text-faint">Nothing missing.</p>
                   ) : (
-                    <ul className="space-y-1">
+                    <ul className="space-y-1.5">
                       {dispute.assessment.gaps.map((g) => (
-                        <li key={g.kind} className="text-sm text-slate-700">
-                          ✗ {g.label}
-                          {g.mandatory && (
-                            <span className="ml-1 rounded bg-rose-100 px-1 text-xs font-semibold text-rose-700">
-                              BLOCKING
-                            </span>
-                          )}
+                        <li key={g.kind} className="flex gap-2 text-[13px] text-sub">
+                          <span className="text-bad">✗</span>
+                          <span>
+                            {g.label}
+                            {g.mandatory && (
+                              <span className="ml-1.5 font-mono text-[10px] font-semibold uppercase text-bad">
+                                blocking
+                              </span>
+                            )}
+                          </span>
                         </li>
                       ))}
                     </ul>
                   )}
                 </div>
               </div>
-              <div className="mt-4 flex gap-6 border-t border-slate-100 pt-3 text-sm">
-                <span className="text-slate-500">
-                  coverage{" "}
-                  <strong className="text-slate-800">
+              <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-2 border-t border-linefaint pt-4 text-[13px]">
+                <div>
+                  <dt className="inline text-faint">coverage </dt>
+                  <dd className="inline font-semibold tabular-nums text-ink">
                     {(dispute.assessment.coverage * 100).toFixed(0)}%
-                  </strong>
-                </span>
-                <span className="text-slate-500">
-                  win probability{" "}
-                  <strong className="text-slate-800">
+                  </dd>
+                </div>
+                <div>
+                  <dt className="inline text-faint">win probability </dt>
+                  <dd className="inline font-semibold tabular-nums text-ink">
                     {(dispute.assessment.winProbability * 100).toFixed(0)}%
-                  </strong>
-                </span>
-                <span className="text-slate-500">
-                  expected value{" "}
-                  <strong
-                    className={
+                  </dd>
+                </div>
+                <div>
+                  <dt className="inline text-faint">expected value </dt>
+                  <dd
+                    className={`inline font-semibold tabular-nums ${
                       dispute.assessment.expectedValuePaise > 0
-                        ? "text-emerald-700"
-                        : "text-rose-700"
-                    }
+                        ? "text-good"
+                        : "text-bad"
+                    }`}
                   >
                     {formatRupees(dispute.assessment.expectedValuePaise)}
-                  </strong>
-                </span>
-              </div>
+                  </dd>
+                </div>
+              </dl>
             </Card>
           )}
 
           <Card title="What we are doing, and why">
             {row.action && (
-              <div className="mb-3 flex flex-wrap items-center gap-3">
+              <div className="mb-4 flex flex-wrap items-center gap-4">
                 <ActionBadge action={row.action.kind} />
                 {row.actionDayOffset !== null && row.action.kind !== "ABANDON" && (
-                  <span className="text-sm text-slate-500">
+                  <span className="text-[13px] text-faint">
                     fires at{" "}
-                    <strong className="text-slate-700">
+                    <strong className="font-semibold text-ink">
                       +{row.actionDayOffset}d
                     </strong>{" "}
                     from failure
@@ -162,9 +174,11 @@ export default async function RowPage({
                 )}
               </div>
             )}
-            <p className="text-sm leading-relaxed text-slate-800">{row.rationale}</p>
+            <blockquote className="border-l-2 border-ink pl-4 text-[15px] leading-relaxed text-ink">
+              {row.rationale}
+            </blockquote>
             {row.action?.kind === "ABANDON" && (
-              <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
+              <p className="mt-4 border-l-2 border-warn bg-warnsoft py-2.5 pl-4 pr-4 text-[13px] leading-relaxed text-warn">
                 Stopping is the feature. Every attempt not spent here is an
                 attempt available for a row that can actually be recovered.
               </p>
@@ -174,12 +188,15 @@ export default async function RowPage({
 
         <div className="space-y-6">
           <Card title="Context">
-            <dl className="space-y-2 text-sm">
-              <Row label="Source" value={row.source} />
+            <dl className="space-y-2.5 text-[13px]">
+              <Row label="Source" value={row.source === "DISPUTE" ? "Dispute" : "Debit"} />
               <Row label="Customer" value={row.customerId} mono />
-              <Row label="Instrument" value={row.instrumentType} />
+              <Row label="Instrument" value={row.instrumentType.replace(/_/g, " ")} />
               <Row label="Issuer" value={row.issuerBank} />
-              <Row label="Segment" value={row.segment.toLowerCase().replace(/_/g, " ")} />
+              <Row
+                label="Segment"
+                value={row.segment.toLowerCase().replace(/_/g, " ")}
+              />
               <Row label="Failed on day" value={String(row.failedOnDay)} />
               <Row label="Attempts spent" value={String(row.attempts)} />
               <Row label="Nudges sent" value={String(row.nudges)} />
@@ -193,7 +210,7 @@ export default async function RowPage({
           </Card>
 
           <Card title="Not visible to the policy">
-            <p className="text-sm text-slate-600">
+            <p className="text-[13px] leading-relaxed text-sub">
               Salary day, balance curve, responsiveness and whether the customer
               has quietly revoked are all latent. The policy infers from the
               columns above and nothing else. Only the oracle baseline in the
@@ -217,8 +234,8 @@ function Row({
 }) {
   return (
     <div className="flex justify-between gap-4">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className={`text-right text-slate-800 ${mono ? "font-mono text-xs" : ""}`}>
+      <dt className="text-faint">{label}</dt>
+      <dd className={`text-right text-ink ${mono ? "font-mono text-xs" : "tabular-nums"}`}>
         {value}
       </dd>
     </div>

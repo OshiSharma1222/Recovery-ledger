@@ -10,6 +10,22 @@ export function formatRupees(paise: number): string {
   return `₹${r.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 }
 
+export function Eyebrow({ children }: { children: ReactNode }) {
+  return (
+    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-faint">
+      {children}
+    </p>
+  );
+}
+
+export function PageTitle({ children }: { children: ReactNode }) {
+  return (
+    <h1 className="mt-1.5 font-display text-[34px] font-medium leading-tight tracking-tight text-ink">
+      {children}
+    </h1>
+  );
+}
+
 export function Card({
   title,
   children,
@@ -20,11 +36,9 @@ export function Card({
   className?: string;
 }) {
   return (
-    <section
-      className={`rounded-lg border border-slate-200 bg-white shadow-sm ${className}`}
-    >
+    <section className={`border border-line bg-card ${className}`}>
       {title && (
-        <h2 className="border-b border-slate-100 px-5 py-3 text-sm font-semibold text-slate-700">
+        <h2 className="border-b border-linefaint px-5 py-3 text-[13px] font-semibold text-ink">
           {title}
         </h2>
       )}
@@ -37,38 +51,52 @@ export function Stat({
   label,
   value,
   hint,
+  tone = "ink",
 }: {
   label: string;
   value: string;
   hint?: string;
+  tone?: "ink" | "good" | "warn";
 }) {
+  const toneClass =
+    tone === "good" ? "text-good" : tone === "warn" ? "text-warn" : "text-ink";
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
-        {label}
-      </div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums text-slate-900">
+    <div className="px-5 py-4 sm:px-6">
+      <div className="text-xs text-sub">{label}</div>
+      <div
+        className={`mt-1 text-[26px] font-semibold leading-none tracking-tight ${toneClass}`}
+      >
         {value}
       </div>
-      {hint && <div className="mt-1 text-xs text-slate-500">{hint}</div>}
+      {hint && <div className="mt-1.5 text-xs text-faint">{hint}</div>}
     </div>
   );
 }
 
-const STATUS_STYLES: Record<LedgerStatus, string> = {
-  RECOVERED: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  ABANDONED: "bg-amber-50 text-amber-700 ring-amber-200",
-  LOST: "bg-rose-50 text-rose-700 ring-rose-200",
-  OPEN: "bg-slate-50 text-slate-600 ring-slate-200",
-  IN_PROGRESS: "bg-sky-50 text-sky-700 ring-sky-200",
+export function StatRow({ children }: { children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-2 divide-line border border-line bg-card max-sm:divide-y sm:auto-cols-fr sm:grid-flow-col sm:grid-cols-none sm:divide-x">
+      {children}
+    </div>
+  );
+}
+
+const STATUS: Record<LedgerStatus, { dot: string; text: string; label: string }> = {
+  RECOVERED: { dot: "bg-good", text: "text-good", label: "Recovered" },
+  ABANDONED: { dot: "bg-warn", text: "text-warn", label: "Abandoned" },
+  LOST: { dot: "bg-bad", text: "text-bad", label: "Lost" },
+  IN_PROGRESS: { dot: "bg-info", text: "text-info", label: "In progress" },
+  OPEN: { dot: "bg-faint", text: "text-sub", label: "Open" },
 };
 
 export function StatusBadge({ status }: { status: LedgerStatus }) {
+  const s = STATUS[status];
   return (
     <span
-      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${STATUS_STYLES[status]}`}
+      className={`inline-flex items-center gap-1.5 text-[13px] font-medium ${s.text}`}
     >
-      {status.toLowerCase().replace("_", " ")}
+      <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
+      {s.label}
     </span>
   );
 }
@@ -85,14 +113,10 @@ export function CauseBadge({ cause }: { cause: RootCauseKind }) {
   const terminal = TERMINAL_CAUSES.has(cause);
   return (
     <span
-      className={`inline-flex rounded px-1.5 py-0.5 font-mono text-xs ring-1 ring-inset ${
-        terminal
-          ? "bg-rose-50 text-rose-700 ring-rose-200"
-          : "bg-slate-50 text-slate-700 ring-slate-200"
-      }`}
+      className={`font-mono text-xs ${terminal ? "text-bad" : "text-sub"}`}
       title={terminal ? "Terminal: no retry can ever succeed" : "Retryable"}
     >
-      {cause}
+      {cause.toLowerCase()}
     </span>
   );
 }
@@ -101,13 +125,9 @@ export function ActionBadge({ action }: { action: RecoveryActionKind }) {
   const abandon = action === "ABANDON";
   return (
     <span
-      className={`inline-flex rounded px-1.5 py-0.5 font-mono text-xs ring-1 ring-inset ${
-        abandon
-          ? "bg-amber-50 text-amber-800 ring-amber-200"
-          : "bg-indigo-50 text-indigo-700 ring-indigo-200"
-      }`}
+      className={`font-mono text-xs ${abandon ? "font-medium text-warn" : "text-ink"}`}
     >
-      {action}
+      {action.toLowerCase()}
     </span>
   );
 }
