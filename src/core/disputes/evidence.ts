@@ -1,40 +1,4 @@
-/**
- * Lane 2: disputes.
- *
- * Same ledger, same policy interface, different action set. Deliberately thin
- * -- no simulator of its own and no separate benchmark, because Lane 1 already
- * carries the quantitative argument.
- *
- * ## Why disputes belong in the same ledger at all
- *
- * A failed recurring debit is money that was never captured. A chargeback is
- * money that was captured and clawed back. Both are unrecovered rupees, both
- * need a decision about whether chasing is worth it, and both have a large
- * class of cases where the correct answer is to stop. Modelling them as two
- * products is why merchants run two teams with two tools and no shared view of
- * what they are actually losing.
- *
- * ## The tie back to Lane 1
- *
- * Reason code 13.2 -- cancelled recurring transaction -- is literally a
- * dispute about a recurring debit. The compelling evidence a merchant needs
- * for it (proof of mandate authorisation, proof the RBI pre-debit notification
- * was delivered) is data Lane 1 already handles. That overlap is not a
- * coincidence, and it is the strongest argument for one ledger rather than two.
- *
- * ## Honesty note on the codes
- *
- * Network reason codes below are real Visa VCR and Mastercard codes. Evidence
- * requirements are drawn from published card-network guidance, which is
- * secondary reporting rather than the Core Rules themselves. Verify against
- * current Visa Core Rules before quoting a specific requirement on camera.
- */
-
 import { formatPaise } from "../taxonomy.js";
-
-// ---------------------------------------------------------------------------
-// Evidence artifacts
-// ---------------------------------------------------------------------------
 
 export type EvidenceKind =
   | "ORDER_RECORD"
@@ -50,9 +14,9 @@ export type EvidenceKind =
   | "REFUND_ISSUED_PROOF"
   | "DUPLICATE_ANALYSIS"
   | "PRIOR_UNDISPUTED_TRANSACTIONS"
-  /** Lane 1 overlap: the signed mandate the debit was taken under. */
+
   | "MANDATE_AUTHORISATION"
-  /** Lane 1 overlap: proof the RBI-mandated 24h notice was delivered. */
+
   | "PRE_DEBIT_NOTICE_PROOF";
 
 export const EVIDENCE_LABELS: Record<EvidenceKind, string> = {
@@ -73,24 +37,13 @@ export const EVIDENCE_LABELS: Record<EvidenceKind, string> = {
   PRE_DEBIT_NOTICE_PROOF: "Delivery receipt for the 24h pre-debit notification",
 };
 
-// ---------------------------------------------------------------------------
-// Reason codes
-// ---------------------------------------------------------------------------
-
 export type DisputeCategory = "FRAUD" | "CONSUMER_DISPUTE" | "PROCESSING_ERROR";
 
 export interface EvidenceRequirement {
   readonly kind: EvidenceKind;
-  /**
-   * Share of the case this artifact carries, 0..1 across a reason code.
-   * Roughly "how much of the issuer's decision hangs on this".
-   */
+
   readonly weight: number;
-  /**
-   * Networks will not even review a representment without this. Missing a
-   * mandatory artifact is not a weak case, it is an unwinnable one -- which
-   * is the distinction the gap analysis exists to make.
-   */
+
   readonly mandatory: boolean;
 }
 
@@ -99,12 +52,12 @@ export interface ReasonCode {
   readonly network: "VISA" | "MASTERCARD" | "RUPAY";
   readonly title: string;
   readonly category: DisputeCategory;
-  /** Days the merchant has to respond. */
+
   readonly responseWindowDays: number;
-  /** Base likelihood of winning with a complete evidence packet. */
+
   readonly baseWinRate: number;
   readonly requires: readonly EvidenceRequirement[];
-  /** Why this code is hard or easy, in one line. Shown in the UI. */
+
   readonly note: string;
 }
 
@@ -114,12 +67,6 @@ const req = (
   mandatory = false,
 ): EvidenceRequirement => ({ kind, weight, mandatory });
 
-/**
- * The reason codes this project handles.
- *
- * Chosen for relevance to recurring payments rather than for coverage. A
- * merchant on Razorpay running subscriptions sees these.
- */
 export const REASON_CODES: Record<string, ReasonCode> = {
   VISA_13_2: {
     code: "13.2",
@@ -272,27 +219,11 @@ export function reasonCode(id: string): ReasonCode {
   return rc;
 }
 
-// ---------------------------------------------------------------------------
-// Economics
-// ---------------------------------------------------------------------------
-
-/**
- * What it costs to fight, regardless of outcome.
- *
- * The network fee is sunk the moment the chargeback lands. The representment
- * cost is the marginal spend the decision is actually about: analyst time,
- * document gathering, and the acquirer's per-representment charge.
- */
 export const DISPUTE_ECONOMICS = {
-  /** Chargeback fee, already lost. Not part of the contest decision. */
   NETWORK_FEE_PAISE: 1_500_00,
-  /** Marginal cost of assembling and filing one representment. */
+
   REPRESENTMENT_COST_PAISE: 850_00,
 } as const;
-
-// ---------------------------------------------------------------------------
-// Gap analysis
-// ---------------------------------------------------------------------------
 
 export interface EvidenceGap {
   readonly kind: EvidenceKind;
@@ -309,25 +240,17 @@ export interface EvidenceAssessment {
   readonly reasonCodeId: string;
   readonly present: readonly EvidenceKind[];
   readonly gaps: readonly EvidenceGap[];
-  /** Gaps that make the case unwinnable rather than merely weaker. */
+
   readonly blockingGaps: readonly EvidenceGap[];
-  /** Share of the reason code's evidence weight actually held. */
+
   readonly coverage: number;
   readonly winProbability: number;
-  /** winProbability * amount - representment cost, in paise. */
+
   readonly expectedValuePaise: number;
   readonly action: DisputeAction;
   readonly rationale: string;
 }
 
-/**
- * Assess one dispute.
- *
- * The useful output here is `blockingGaps`, not `winProbability`. A merchant
- * who learns that they lose 13.2 cases because nobody stores the pre-debit
- * notification receipt can fix that once and stop losing them. A merchant who
- * only learns "you will probably lose this one" cannot act on it at all.
- */
 export function assessEvidence(
   reasonCodeId: string,
   amountPaise: number,
@@ -357,9 +280,6 @@ export function assessEvidence(
   const coverage = totalWeight === 0 ? 0 : heldWeight / totalWeight;
   const blockingGaps = gaps.filter((g) => g.mandatory);
 
-  // A missing mandatory artifact is not a discount, it is a wall. Modelling it
-  // as a proportional penalty would produce confident-looking 40% estimates on
-  // cases that cannot be reviewed at all.
   const winProbability =
     blockingGaps.length > 0
       ? Math.min(0.08, rc.baseWinRate * coverage * 0.2)

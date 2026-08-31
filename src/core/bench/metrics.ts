@@ -1,14 +1,3 @@
-/**
- * Benchmark metrics.
- *
- * Every one of these is reported, and that is a deliberate choice rather than
- * thoroughness for its own sake. A policy that recovers slightly less money
- * while sending half the nudges and burning a third of the attempts is
- * arguably the better policy, and a single headline recovery rate hides that
- * entirely. Reporting the full set is also the only honest way to present a
- * result where the system under test does not win on every axis.
- */
-
 import type { LedgerRow } from "../ledger.js";
 import { isTerminal } from "../taxonomy.js";
 import type { LatentFailure } from "../simulator/population.js";
@@ -17,10 +6,9 @@ export interface Metrics {
   readonly policyId: string;
   readonly policyName: string;
 
-  /** Rupees at risk across the whole ledger, in paise. */
   readonly atRiskPaise: number;
   readonly recoveredPaise: number;
-  /** recoveredPaise / atRiskPaise. */
+
   readonly recoveryRate: number;
 
   readonly rowsTotal: number;
@@ -28,28 +16,18 @@ export interface Metrics {
   readonly rowsAbandoned: number;
   readonly rowsLost: number;
 
-  /** Debit attempts beyond the original failed presentment. */
   readonly retries: number;
-  /** Customer-facing messages sent. The annoyance proxy. */
+
   readonly nudges: number;
 
-  /**
-   * Retries spent on rows whose TRUE cause is terminal.
-   *
-   * Measured against the simulator's ground truth, not against what any
-   * policy believed. This is a measurement, never an input to a decision --
-   * no policy is allowed to see it.
-   */
   readonly wastedRetries: number;
-  /** Money that could never have been recovered, in paise. */
+
   readonly unrecoverablePaise: number;
 
-  /** Retries per successful recovery. Lower is better. Infinity if none. */
   readonly retriesPerRecovery: number;
-  /** Mean days from failure to money landing, over recovered rows only. */
+
   readonly meanDaysToRecovery: number;
 
-  /** recoveredPaise / oracle's recoveredPaise. Set by the runner. */
   ceilingCapture: number | null;
 }
 
@@ -78,8 +56,6 @@ export function computeMetrics(
     atRiskPaise += row.amountPaise;
     recoveredPaise += row.recoveredPaise;
 
-    // `attempts` starts at 1 for the original failed presentment, which no
-    // policy chose and none should be charged for.
     const rowRetries = Math.max(0, row.attempts - 1);
     retries += rowRetries;
     nudges += row.nudges;
@@ -98,8 +74,7 @@ export function computeMetrics(
         rowsLost += 1;
         break;
       default:
-        // OPEN / IN_PROGRESS at the horizon count as lost: the money did not
-        // come back, and calling it anything softer would flatter the policy.
+
         rowsLost += 1;
         break;
     }
@@ -131,13 +106,6 @@ export function computeMetrics(
   };
 }
 
-/**
- * Fill in each policy's share of the oracle's recovery.
- *
- * This is the number worth quoting. "61% of at-risk rupees" invites the
- * question "out of what?"; "78% of everything that was recoverable at all"
- * answers it, and shows the difference between a result and a bound.
- */
 export function withCeilingCapture(
   metrics: readonly Metrics[],
   oraclePolicyId = "B4",

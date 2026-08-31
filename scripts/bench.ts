@@ -1,18 +1,3 @@
-/**
- * THE one command.
- *
- *   npm run bench
- *
- * Runs every policy over the same seeded population, prints the comparison
- * table, and writes results/benchmark.md. No API key. No database. No network.
- * Seeded throughout, so the numbers are identical on any machine.
- *
- * A reviewer who clones the repo and watches these numbers print in their own
- * terminal has personally verified the project's central claim. That is worth
- * more than any amount of prose, and it is why this script has no dependency
- * that could plausibly fail to install.
- */
-
 import { writeFileSync, mkdirSync } from "node:fs";
 
 import { ALL_POLICIES } from "../src/core/policy/baselines.js";
@@ -23,10 +8,6 @@ import {
   type BenchReport,
 } from "../src/core/bench/run.js";
 import type { Metrics } from "../src/core/bench/metrics.js";
-
-// ---------------------------------------------------------------------------
-// Formatting
-// ---------------------------------------------------------------------------
 
 const rupees = (paise: number): string => {
   const r = Math.round(paise / 100);
@@ -97,10 +78,6 @@ function renderMarkdownTable(metrics: readonly Metrics[]): string {
   return [head, sep, ...body].join("\n");
 }
 
-// ---------------------------------------------------------------------------
-// Narrative
-// ---------------------------------------------------------------------------
-
 function headline(report: BenchReport): string[] {
   const get = (id: string) => report.metrics.find((m) => m.policyId === id);
   const b1 = get("B1");
@@ -125,8 +102,6 @@ function headline(report: BenchReport): string[] {
     `${rupees(b3.unrecoverablePaise)} of this ledger is structurally unrecoverable.`,
   ];
 }
-
-// ---------------------------------------------------------------------------
 
 function main(): void {
   const arg = (name: string): string | undefined =>

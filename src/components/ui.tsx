@@ -1,12 +1,3 @@
-/**
- * The entire component library.
- *
- * Four primitives, no dependency, no custom CSS beyond Tailwind utilities.
- * The plan budgeted half a day for the dashboard and identified the frontend
- * as the largest schedule risk in the project, so this is deliberately the
- * smallest thing that films well.
- */
-
 import type { ReactNode } from "react";
 
 import type { LedgerStatus } from "@/core/ledger";
@@ -72,12 +63,6 @@ const STATUS_STYLES: Record<LedgerStatus, string> = {
   IN_PROGRESS: "bg-sky-50 text-sky-700 ring-sky-200",
 };
 
-/**
- * ABANDONED is amber, not red.
- *
- * It is a decision, not a failure, and the colour should say so. LOST -- we
- * tried and ran out of runway -- is the red one. Reviewers read the legend.
- */
 export function StatusBadge({ status }: { status: LedgerStatus }) {
   return (
     <span

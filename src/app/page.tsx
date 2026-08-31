@@ -1,12 +1,3 @@
-/**
- * Screen 1: the ledger.
- *
- * The point of this table is that it does not branch on `source` except to
- * render a badge. Failed recurring debits and chargebacks sit in the same
- * rows, with the same statuses and the same rationale column, because they are
- * the same problem: money the merchant is owed and has not got.
- */
-
 import Link from "next/link";
 
 import { getLedger, getSummary } from "@/lib/data";
@@ -22,7 +13,6 @@ export default function LedgerPage() {
   const ledger = getLedger();
   const summary = getSummary();
 
-  // Biggest exposure first: that is the order a recovery analyst works in.
   const rows = [...ledger].sort((a, b) => b.row.amountPaise - a.row.amountPaise);
 
   return (

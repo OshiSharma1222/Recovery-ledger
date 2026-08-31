@@ -1,31 +1,3 @@
-/**
- * B3: the Recovery Ledger policy engine. The system under test.
- *
- * A ledger row goes in; a justified action with a timestamp comes out.
- *
- * ## The compiler proves this is total
- *
- * The switch below is over `RootCause`, and its default branch calls
- * `assertNever`. If someone adds a cause to the taxonomy and does not decide
- * what to do about it, `tsc` fails. Not a lint rule, not a test that might not
- * run -- the build.
- *
- * That guarantee is worth stating plainly because it is the reason the domain
- * model is a discriminated union instead of a string enum, and it is not
- * something Python would have given for free. In a dunning system the failure
- * mode it prevents is specific and expensive: a new gateway reason code
- * appears, nothing handles it, and it silently falls into a default retry
- * branch that re-presents an unretryable debit five times a cycle, forever.
- *
- * ## The organising principle
- *
- * Recovery is resource allocation. Every row competes for a finite budget of
- * debit attempts and customer patience, so the interesting decision is not
- * "how do we recover this?" but "is this worth chasing at all?". Three of the
- * ten causes are answered with ABANDON, and on those rows the correct amount
- * of effort is zero. Baselines have no way to express that.
- */
-
 import {
   assertNever,
   isTerminal,
@@ -41,9 +13,9 @@ import { RESPONSE, SIM } from "../simulator/params.js";
 
 export interface Decision {
   readonly action: RecoveryAction;
-  /** Days after the failure that the action fires. */
+
   readonly dayOffset: number;
-  /** Human-readable justification, shown verbatim on the row detail screen. */
+
   readonly rationale: string;
 }
 
@@ -51,36 +23,18 @@ export interface PolicyInput {
   readonly row: LedgerRow;
   readonly classification: Classification;
   readonly estimator: TimingEstimator;
-  /** Attempts already spent on this row. */
+
   readonly attemptsSpent: number;
-  /** Nudges already sent to this customer. */
+
   readonly nudgesSent: number;
 }
 
-// ---------------------------------------------------------------------------
-// Economics
-// ---------------------------------------------------------------------------
-
-/**
- * Cost of one debit attempt, in paise.
- *
- * Deliberately modest. The real cost of a wasted retry is not the processing
- * fee -- it is the issuer relationship, the customer seeing three failed-debit
- * SMS messages in a week, and the attempt budget spent on a row that cannot be
- * recovered instead of one that can.
- */
 const ATTEMPT_COST_PAISE = 250;
 
-/** Cost of one customer nudge. Higher than an attempt: it consumes goodwill. */
 const NUDGE_COST_PAISE = 900;
 
-/**
- * Minimum expected value, as a fraction of the amount at risk, for an action
- * to be worth taking. Below this we abandon rather than chase.
- */
 const MIN_EV_RATIO = 0.02;
 
-/** Confidence below which we treat the classification as untrustworthy. */
 const LOW_CONFIDENCE = 0.5;
 
 const CHANNEL_BY_INSTRUMENT: Record<LedgerRow["instrumentType"], NudgeChannel> = {
@@ -89,20 +43,12 @@ const CHANNEL_BY_INSTRUMENT: Record<LedgerRow["instrumentType"], NudgeChannel> =
   NACH_EMANDATE: "sms",
 };
 
-/** Candidate retry offsets. Bounded by the horizon and by patience. */
 const RETRY_OFFSETS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
-
-// ---------------------------------------------------------------------------
-// The engine
-// ---------------------------------------------------------------------------
 
 export function decide(input: PolicyInput): Decision {
   const { row, classification, attemptsSpent } = input;
   const c = classification.cause;
 
-  // Budget exhaustion is checked before the cause switch. Once the attempt
-  // budget is gone the cause no longer matters -- there is nothing left to
-  // spend, and pretending otherwise would produce actions that cannot fire.
   if (attemptsSpent >= SIM.MAX_ATTEMPTS) {
     return {
       action: { kind: "ABANDON", winBack: !isTerminal(c) },
@@ -112,19 +58,10 @@ export function decide(input: PolicyInput): Decision {
   }
 
   switch (c.kind) {
-    // -----------------------------------------------------------------------
-    // Timing-sensitive. The one case where the learned estimator earns its keep.
-    // -----------------------------------------------------------------------
     case "INSUFFICIENT_FUNDS":
       return decideInsufficientFunds(input);
 
-    // -----------------------------------------------------------------------
-    // Terminal. Retrying is structurally guaranteed to fail.
-    // -----------------------------------------------------------------------
     case "MANDATE_EXPIRED": {
-      // Not abandoned: the mandate is dead but the customer relationship may
-      // not be. A renewal ask is the only thing that can work, and it costs a
-      // nudge rather than an attempt.
       const ev = expectedNudgeValue(row.amountPaise, RESPONSE.MANDATE_RENEWAL_FACTOR);
       if (ev < row.amountPaise * MIN_EV_RATIO) {
         return {
@@ -144,8 +81,6 @@ export function decide(input: PolicyInput): Decision {
     }
 
     case "MANDATE_AMOUNT_EXCEEDED": {
-      // Retrying the same amount fails by construction. Splitting is the only
-      // presentment that can clear the cap.
       const parts = smallestSplit(c.attemptedPaise, c.capPaise);
       if (parts === null) {
         return {
@@ -163,9 +98,7 @@ export function decide(input: PolicyInput): Decision {
     }
 
     case "MANDATE_REVOKED":
-      // The clearest ABANDON in the taxonomy. The customer has actively said
-      // no. Continuing to debit is not a recovery strategy, it is a complaint
-      // waiting to happen.
+
       return {
         action: { kind: "ABANDON", winBack: true },
         dayOffset: 0,
@@ -192,20 +125,14 @@ export function decide(input: PolicyInput): Decision {
     }
 
     case "RISK_BLOCKED":
-      // The one cause where retrying is not merely wasteful but wrong.
+
       return {
         action: { kind: "ABANDON", winBack: false },
         dayOffset: 0,
         rationale: `Blocked by risk or compliance. Re-presenting a risk-blocked debit is not a recovery tactic and would be its own problem. Not flagged for win-back.`,
       };
 
-    // -----------------------------------------------------------------------
-    // Fixable, then retryable.
-    // -----------------------------------------------------------------------
     case "PRE_DEBIT_NOTICE_FAILED": {
-      // RBI requires 24h of notice, so the earliest legal re-presentment is
-      // the day after the notice goes out. A same-day retry is not just
-      // unlikely to work -- it is not allowed to.
       const retryOffset = 1 + RESPONSE.NOTICE_MIN_RETRY_DELAY_DAYS;
       return {
         action: {
@@ -218,9 +145,6 @@ export function decide(input: PolicyInput): Decision {
       };
     }
 
-    // -----------------------------------------------------------------------
-    // Transient. Wait the right amount of time, not a fixed amount.
-    // -----------------------------------------------------------------------
     case "ISSUER_DOWNTIME": {
       const { feature: offset, probability, support } = input.estimator.best(
         "ISSUER_DOWNTIME",
@@ -254,15 +178,7 @@ export function decide(input: PolicyInput): Decision {
       };
     }
 
-    // -----------------------------------------------------------------------
-    // Genuinely ambiguous. Bounded retries, then stop.
-    // -----------------------------------------------------------------------
     case "DO_NOT_HONOUR": {
-      // The issuer refused without saying why, so some of these are soft and
-      // clear on retry while the rest never will. The honest response is a
-      // small, bounded number of attempts -- not the unbounded retrying a
-      // fixed schedule does, and not the zero attempts that treating it as
-      // terminal would give.
       if (attemptsSpent >= 3) {
         return {
           action: { kind: "ABANDON", winBack: true },
@@ -272,8 +188,6 @@ export function decide(input: PolicyInput): Decision {
       }
 
       if (classification.confidence < LOW_CONFIDENCE && attemptsSpent >= 1) {
-        // We do not know what this is and one attempt has already failed.
-        // Escalating a high-value row to a human beats guessing again.
         if (row.amountPaise >= 5_000_00) {
           return {
             action: { kind: "ESCALATE", note: "unexplained decline on a high-value mandate" },
@@ -300,24 +214,14 @@ export function decide(input: PolicyInput): Decision {
       };
     }
 
-    // -----------------------------------------------------------------------
-    // The guarantee. Adding a cause without handling it fails the build.
-    // -----------------------------------------------------------------------
     default:
       return assertNever(c, "policy/engine.decide");
   }
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function decideInsufficientFunds(input: PolicyInput): Decision {
   const { row, estimator, attemptsSpent } = input;
 
-  // The estimator is keyed on calendar position for this cause, because that
-  // is where the balance curve lives. Convert candidate offsets into the
-  // day-of-month they would land on, ask which is best, convert back.
   if (featureKindFor("INSUFFICIENT_FUNDS") !== "CALENDAR_DAY") {
     throw new Error("INSUFFICIENT_FUNDS must be estimated on calendar position");
   }
@@ -339,8 +243,7 @@ function decideInsufficientFunds(input: PolicyInput): Decision {
   for (const offset of horizonOffsets) {
     const dom = ((row.failedOnDay + offset) % MONTH_DAYS) + 1;
     const p = estimator.probability("INSUFFICIENT_FUNDS", row.segment, dom);
-    // Prefer sooner on a tie: the same rupee recovered earlier is worth more,
-    // and a longer wait is more exposure to the mandate lapsing underneath us.
+
     if (p > bestP + 1e-9) {
       bestP = p;
       bestOffset = offset;
@@ -348,7 +251,6 @@ function decideInsufficientFunds(input: PolicyInput): Decision {
     }
   }
 
-  // Is another attempt worth its cost?
   const expectedGain = bestP * row.amountPaise;
   if (expectedGain < ATTEMPT_COST_PAISE || bestP < 0.05) {
     return {
@@ -377,19 +279,13 @@ function decideInsufficientFunds(input: PolicyInput): Decision {
   };
 }
 
-/**
- * Fewest parts that bring each instalment under the cap, or null if even the
- * maximum split does not fit.
- */
 function smallestSplit(amountPaise: number, capPaise: number): number | null {
   if (capPaise <= 0) return null;
   const needed = Math.ceil(amountPaise / capPaise);
   return needed <= RESPONSE.SPLIT_MAX_PARTS ? Math.max(2, needed) : null;
 }
 
-/** Crude EV of a nudge, before knowing this customer's responsiveness. */
 function expectedNudgeValue(amountPaise: number, factor: number): number {
-  // The policy cannot see responsiveness, so it uses the population mean.
   const assumedResponsiveness = 0.38;
   return assumedResponsiveness * factor * amountPaise - NUDGE_COST_PAISE;
 }

@@ -1,13 +1,3 @@
-/**
- * Lane 2 demo.
- *
- *   npm run disputes            template drafts, no API key needed
- *   npm run disputes -- --live  calls Claude and populates data/llm-cache/
- *
- * Prints the evidence gap analysis and the contest / do-not-contest decision
- * for every case, then one drafted representment.
- */
-
 import { assessAllCases } from "../src/core/disputes/cases.js";
 import { draftRepresentment } from "../src/core/disputes/draft.js";
 import { reasonCode, DISPUTE_ECONOMICS } from "../src/core/disputes/evidence.js";
@@ -96,8 +86,6 @@ async function main(): Promise<void> {
   console.log("  is knowing what not to chase.");
   console.log("");
 
-  // The most useful output in the whole lane. A merchant who learns WHICH
-  // artifact keeps blocking their cases can fix it once, upstream.
   const blockingCounts = new Map<string, number>();
   for (const { assessment } of cases) {
     for (const g of assessment.blockingGaps) {
@@ -113,7 +101,6 @@ async function main(): Promise<void> {
     console.log("");
   }
 
-  // One full drafted letter.
   const contestable = cases.find((c) => c.assessment.action.kind === "CONTEST");
   if (contestable) {
     const draft = await draftRepresentment(

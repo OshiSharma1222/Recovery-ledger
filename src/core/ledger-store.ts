@@ -1,25 +1,3 @@
-/**
- * SQLite persistence for the Recovery Ledger.
- *
- * This file is separated from `ledger.ts` on purpose, and the reason is the
- * project's central claim rather than tidiness.
- *
- * The benchmark's whole pitch is "clone the repo, run one command, see the
- * same numbers". `better-sqlite3` is a native module, so on any machine where
- * the toolchain cannot build or fetch a prebuilt binary, importing it throws
- * at load time. If the benchmark path touched this file, a reviewer with a
- * slightly awkward Windows or ARM setup would get a build error instead of a
- * results table, and the one thing the project most needs to demonstrate
- * would be the thing that fails.
- *
- * So: `ledger.ts` is pure types and helpers with zero runtime dependencies and
- * is what the benchmark imports. This file is imported only by the seed script
- * and the dashboard, which are allowed to require a working native build.
- *
- * `npm run bench` must never import this module. There is a test that asserts
- * exactly that.
- */
-
 import Database from "better-sqlite3";
 import type { Database as Db, Statement } from "better-sqlite3";
 import type {
@@ -30,18 +8,6 @@ import type {
 } from "./taxonomy.js";
 import type { LedgerRow, LedgerSource, LedgerStatus } from "./ledger.js";
 
-// ---------------------------------------------------------------------------
-// SQL schema
-// ---------------------------------------------------------------------------
-
-/**
- * `root_cause` and `action` are stored as JSON text rather than exploded into
- * columns. They are discriminated unions with per-variant payloads, so a
- * relational shredding would need either a wide sparse table or a join per
- * variant. JSON keeps the TypeScript union as the single definition of the
- * shape, and we never query on the payload -- only on `kind`, which is
- * denormalised into its own indexed column.
- */
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS ledger (
   id                TEXT PRIMARY KEY,
@@ -71,10 +37,6 @@ CREATE INDEX IF NOT EXISTS idx_ledger_status ON ledger (status);
 CREATE INDEX IF NOT EXISTS idx_ledger_cause  ON ledger (root_cause_kind);
 CREATE INDEX IF NOT EXISTS idx_ledger_source ON ledger (source);
 `;
-
-// ---------------------------------------------------------------------------
-// Row <-> SQL mapping
-// ---------------------------------------------------------------------------
 
 interface LedgerRecord {
   id: string;
@@ -124,17 +86,6 @@ function toRow(r: LedgerRecord): LedgerRow {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Store
-// ---------------------------------------------------------------------------
-
-/**
- * Synchronous SQLite store.
- *
- * better-sqlite3 is synchronous by design, which is exactly right here: the
- * seed script is a single-threaded loop and an async driver would buy nothing
- * but await noise. The dashboard reads it from server components.
- */
 export class LedgerStore {
   private readonly db: Db;
   private readonly stmts: {
@@ -145,7 +96,6 @@ export class LedgerStore {
     bySource: Statement<unknown[], unknown>;
   };
 
-  /** Pass ':memory:' for tests, a path for the dashboard. */
   constructor(location: string = ":memory:") {
     this.db = new Database(location);
     this.db.pragma("journal_mode = WAL");
@@ -221,7 +171,6 @@ export class LedgerStore {
     this.stmts.insert.run(this.params(row));
   }
 
-  /** Bulk insert inside one transaction. Orders of magnitude faster. */
   insertMany(rows: readonly LedgerRow[]): void {
     const tx = this.db.transaction((batch: readonly LedgerRow[]) => {
       for (const row of batch) this.stmts.insert.run(this.params(row));
@@ -253,7 +202,6 @@ export class LedgerStore {
     return (this.stmts.bySource.all(source) as LedgerRecord[]).map(toRow);
   }
 
-  /** Replace the whole table. Used by the seed script so it is idempotent. */
   reset(): void {
     this.db.exec("DELETE FROM ledger");
   }

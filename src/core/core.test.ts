@@ -1,11 +1,3 @@
-/**
- * Tests for the properties the benchmark's validity actually rests on.
- *
- * These are not coverage theatre. Each one guards a claim the README or the
- * video makes out loud, and if any of them fails the corresponding claim is
- * false rather than merely untested.
- */
-
 import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
@@ -49,8 +41,6 @@ import {
 } from "./disputes/evidence.js";
 import { buildPrompt, draftRepresentment, templateLetter } from "./disputes/draft.js";
 
-// ---------------------------------------------------------------------------
-
 const baseRow = (over: Partial<LedgerRow> = {}): LedgerRow => ({
   ...newLedgerRow({
     id: "led_test",
@@ -80,8 +70,6 @@ const ctx = (
   },
   issuerDegraded: false,
 });
-
-// ---------------------------------------------------------------------------
 
 describe("frozen parameters", () => {
   it("are internally consistent", () => {
@@ -158,8 +146,6 @@ describe("taxonomy", () => {
 
 describe("classifier", () => {
   it("splits mandate_not_active into expiry vs revocation using the merchant's own record", () => {
-    // Same raw string, opposite actions. This is the disambiguation the whole
-    // file exists for, so it is the one test that must never regress.
     const row = baseRow({ rawCode: "mandate_not_active", failedOnDay: 20 });
 
     const lapsed = classify(ctx(row, { expiryDay: 15 }));
@@ -209,14 +195,6 @@ describe("classifier", () => {
 });
 
 describe("environment", () => {
-  /**
-   * The single most important property in the repo.
-   *
-   * If a terminal cause could ever recover by retrying, ABANDON would be
-   * throwing money away and the entire thesis would be wrong. This asserts the
-   * zero directly, across every offset, for every terminal cause present in a
-   * real generated world.
-   */
   it("never recovers a terminal cause by retrying, at any offset", () => {
     const world = buildWorld("terminal-check", 1500);
     const rng = new Rng("terminal-check:probe");
@@ -235,7 +213,6 @@ describe("environment", () => {
       }
     }
 
-    // Guard against the test silently passing on an empty set.
     expect(checked).toBeGreaterThan(50);
   });
 
@@ -276,8 +253,6 @@ describe("environment", () => {
   });
 
   it("keeps the soft/hard DO_NOT_HONOUR split stable across retries", () => {
-    // If this were redrawn each attempt, brute-force retrying would eventually
-    // win and the benchmark would reward exactly the behaviour it indicts.
     const world = buildWorld("dnh-stability", 2000);
     const dnh = [...world.latent.values()].filter(
       (f) => f.trueCause.kind === "DO_NOT_HONOUR",
@@ -295,7 +270,7 @@ describe("environment", () => {
         if (outcome.note.includes("hard issuer refusal")) results.add("hard");
         else results.add("soft-or-other");
       }
-      // A given customer is always hard or always not; never both.
+
       expect(results.size).toBe(1);
     }
   });
@@ -312,7 +287,7 @@ describe("timing estimator", () => {
         success: i < 80,
       });
     }
-    // Unseen day, unseen segment: must fall back, not invent.
+
     const p = est.probability("INSUFFICIENT_FUNDS", "IRREGULAR_INCOME", 27);
     expect(p).toBeGreaterThan(0);
     expect(p).toBeLessThan(1);
@@ -321,7 +296,7 @@ describe("timing estimator", () => {
 
   it("does not let a 1-of-1 cell read as certainty", () => {
     const est = new TimingEstimator();
-    // Establish a low global rate, then a single lucky observation elsewhere.
+
     for (let i = 0; i < 200; i++) {
       est.observe({
         cause: "DO_NOT_HONOUR",
@@ -377,9 +352,6 @@ describe("timing estimator", () => {
   });
 
   it("recovers the latent pay-cycle signal from observations alone", () => {
-    // The headline claim: the policy is never told salaryDay, but a table
-    // fitted on outcomes should still rank just-after-payday above month-end
-    // for early-month earners.
     const est = new TimingEstimator();
     const world = buildWorld("timing-signal", 3000);
     const rng = new Rng("timing-signal:probe");
@@ -539,7 +511,7 @@ describe("population", () => {
     const world = buildWorld("leak-check", 200);
     const row = world.rows[0]!;
     const keys = Object.keys(row);
-    // If any of these ever appear on a ledger row, the policy is cheating.
+
     for (const forbidden of [
       "salaryDay",
       "affluence",
@@ -553,7 +525,6 @@ describe("population", () => {
   });
 });
 
-/** Minimal valid instance of each cause, for exhaustiveness-style sweeps. */
 function synthesiseCause(kind: RootCause["kind"]): RootCause {
   switch (kind) {
     case "INSUFFICIENT_FUNDS":
@@ -581,20 +552,7 @@ function synthesiseCause(kind: RootCause["kind"]): RootCause {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Benchmark integrity
-// ---------------------------------------------------------------------------
-
 describe("benchmark integrity", () => {
-  /**
-   * B3 must not peek at latent state.
-   *
-   * The OracleView is threaded through the shared PolicyContext, so it is
-   * physically reachable from B3's decide(). This asserts B3 produces byte
-   * identical decisions whether or not it is present. If someone ever wires
-   * ctx.oracle into the engine, the reported lift becomes leakage and this
-   * fails rather than the benchmark quietly inflating.
-   */
   it("B3 decides identically with and without the oracle view", () => {
     const world = buildWorld("peek-check", 600);
     const { estimator } = trainTimingEstimator({ seed: "peek-check:train", customers: 400 });
@@ -664,7 +622,6 @@ describe("benchmark integrity", () => {
   });
 
   it("beats the fixed schedule while spending fewer attempts", () => {
-    // The headline claim. If this ever fails, the video is wrong.
     const report = runBenchmark({ customers: 2000 });
     const b1 = report.metrics.find((m) => m.policyId === "B1")!;
     const b3 = report.metrics.find((m) => m.policyId === "B3")!;
@@ -674,9 +631,6 @@ describe("benchmark integrity", () => {
   });
 
   it("keeps the oracle above every other policy", () => {
-    // If this fails the "% of ceiling" framing is meaningless and must not be
-    // quoted. It caught a real bug: an earlier B4 capped itself at 3 retries
-    // while B3 was allowed 5, and B3 duly came out at 107% of "ceiling".
     const report = runBenchmark({ customers: 2000 });
     const b4 = report.metrics.find((m) => m.policyId === "B4")!;
     for (const m of report.metrics) {
@@ -689,23 +643,12 @@ describe("benchmark integrity", () => {
     const report = runBenchmark({ customers: 2000 });
     const b1 = report.metrics.find((m) => m.policyId === "B1")!;
     const b3 = report.metrics.find((m) => m.policyId === "B3")!;
-    // Both waste some -- B3 misclassifies ~4% of rows -- but B3 must waste far less.
+
     expect(b3.wastedRetries).toBeLessThan(b1.wastedRetries * 0.75);
   });
 });
 
 describe("benchmark portability", () => {
-  /**
-   * `npm run bench` must not depend on a native module.
-   *
-   * The project's central claim is "clone it and run one command". If the
-   * benchmark path imported better-sqlite3, any reviewer whose toolchain
-   * could not build it would get a compile error instead of a results table --
-   * failing at exactly the thing the project most needs to demonstrate.
-   *
-   * Verified by walking the actual import graph from the bench entrypoint,
-   * so it cannot be defeated by an import added three modules deep.
-   */
   it("has no native dependency anywhere in the bench import graph", () => {
     const NATIVE = ["better-sqlite3", "node:sqlite"];
     const seen = new Set<string>();
@@ -746,17 +689,11 @@ describe("benchmark portability", () => {
 
     walk(path.resolve("scripts/bench.ts"));
 
-    // Sanity: the walk must actually have traversed the engine, or a broken
-    // resolver would make this test pass vacuously.
     expect(seen.size).toBeGreaterThan(8);
     expect([...seen].some((f) => f.includes("engine"))).toBe(true);
     expect(offenders).toEqual([]);
   });
 });
-
-// ---------------------------------------------------------------------------
-// Lane 2: disputes
-// ---------------------------------------------------------------------------
 
 describe("dispute evidence engine", () => {
   it("loads every hand-authored case against a real reason code", () => {
@@ -769,9 +706,6 @@ describe("dispute evidence engine", () => {
   });
 
   it("treats a missing mandatory artifact as a wall, not a discount", () => {
-    // The distinction the whole gap analysis exists to make. A proportional
-    // penalty would produce a confident-looking 40% on a case the network
-    // will not even review.
     const complete = assessEvidence("VISA_10_4", 5_000_00, [
       "AUTH_LOG_3DS",
       "AVS_CVV_RESULT",
@@ -790,12 +724,11 @@ describe("dispute evidence engine", () => {
     expect(blocked.blockingGaps).toHaveLength(1);
     expect(blocked.winProbability).toBeLessThan(0.1);
     expect(blocked.action.kind).toBe("DO_NOT_CONTEST");
-    // Losing one mandatory artifact must collapse the estimate, not shave it.
+
     expect(blocked.winProbability).toBeLessThan(complete.winProbability / 4);
   });
 
   it("declines to contest when a complete packet still loses money", () => {
-    // Small amount, full evidence. The right answer is still to walk away.
     const small = assessEvidence("VISA_13_6", 780_00, [
       "REFUND_ISSUED_PROOF",
       "REFUND_POLICY_ACCEPTED",
@@ -806,7 +739,6 @@ describe("dispute evidence engine", () => {
     expect(small.action.kind).toBe("DO_NOT_CONTEST");
     expect(small.expectedValuePaise).toBeLessThanOrEqual(0);
 
-    // Same evidence, larger amount: now worth fighting.
     const large = assessEvidence("VISA_13_6", 90_000_00, [
       "REFUND_ISSUED_PROOF",
       "REFUND_POLICY_ACCEPTED",
@@ -827,8 +759,6 @@ describe("dispute evidence engine", () => {
   });
 
   it("folds disputes into the same ledger schema as failed debits", () => {
-    // The structural claim of the project. Nothing in ledger.ts changed to
-    // accommodate a second source.
     const assessed = assessAllCases();
     for (const { row } of assessed) {
       expect(row.source).toBe("DISPUTE");
@@ -841,8 +771,6 @@ describe("dispute evidence engine", () => {
   });
 
   it("never cites evidence the merchant does not hold", () => {
-    // A representment referencing a document the acquirer cannot produce is
-    // worse than filing nothing.
     for (const { dispute, assessment } of assessAllCases()) {
       const letter = templateLetter(dispute, assessment);
       for (const gap of assessment.gaps) {
@@ -856,7 +784,7 @@ describe("dispute evidence engine", () => {
       (c) => c.assessment.action.kind === "CONTEST",
     )!;
     const draft = await draftRepresentment(dispute, assessment);
-    // With no cache and no --live, this must be TEMPLATE with no model claimed.
+
     expect(["TEMPLATE", "CACHE"]).toContain(draft.source);
     if (draft.source === "TEMPLATE") expect(draft.model).toBeNull();
     expect(draft.promptHash).toMatch(/^[0-9a-f]{16}$/);
@@ -880,7 +808,7 @@ describe("dispute evidence engine", () => {
     const pa = buildPrompt(a!.dispute, a!.assessment);
     const pb = buildPrompt(b!.dispute, b!.assessment);
     expect(pa).not.toBe(pb);
-    // Same input must produce the same prompt, or the cache never hits.
+
     expect(buildPrompt(a!.dispute, a!.assessment)).toBe(pa);
   });
 });

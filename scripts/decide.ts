@@ -1,14 +1,3 @@
-/**
- * Day 2 exit criterion, made executable.
- *
- *   npm run decide
- *
- * A ledger row goes in; a classified cause and a justified action with a
- * timestamp come out. No benchmark yet -- that is Day 3. This just proves the
- * intelligence layer works end to end and prints the rationales a merchant
- * would actually read.
- */
-
 import { classify } from "../src/core/classify.js";
 import { decide } from "../src/core/policy/engine.js";
 import {
@@ -43,7 +32,6 @@ function main(): void {
   console.log(`  eval seed         ${TEST_SEED}  (disjoint -- no leakage)`);
   console.log("");
 
-  // --- what the estimator actually learned -------------------------------
   console.log("  What the estimator learned: P(retry clears | INSUFFICIENT_FUNDS)");
   console.log("  " + "-".repeat(70));
   const days = [1, 3, 5, 8, 11, 14, 17, 20, 23, 26, 29];
@@ -66,7 +54,6 @@ function main(): void {
   console.log("  cannot express that, because it never asks what day it lands on.");
   console.log("");
 
-  // --- decisions on the evaluation world ---------------------------------
   const world = buildWorld(TEST_SEED);
   const byAction = new Map<string, number>();
   const byCause = new Map<RootCauseKind, number>();
@@ -102,7 +89,6 @@ function main(): void {
       (byCause.get(classification.cause.kind) ?? 0) + 1,
     );
 
-    // One worked example per cause, for the video.
     if (!seenCauses.has(classification.cause.kind)) {
       seenCauses.add(classification.cause.kind);
       samples.push(
@@ -152,7 +138,6 @@ function main(): void {
   }
 }
 
-/** Wrap long rationales so the terminal output stays readable on camera. */
 function wrap(text: string, width: number, indent: string): string {
   const words = text.split(" ");
   const lines: string[] = [];

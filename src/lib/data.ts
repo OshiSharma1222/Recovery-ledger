@@ -1,16 +1,3 @@
-/**
- * Data layer for the dashboard.
- *
- * The screens run the engine directly rather than reading the SQLite file.
- * That is a deliberate simplification: the whole benchmark takes ~130ms, so
- * there is nothing to gain from a database round trip, and it means the
- * dashboard works on a fresh clone without anyone having run `npm run seed`
- * first. It also keeps the native module off the rendering path, for the same
- * reason the benchmark keeps it off the CLI path.
- *
- * Memoised at module scope so a page navigation does not re-run the benchmark.
- */
-
 import "server-only";
 
 import { classify, describeCause, type Classification } from "@/core/classify";
@@ -23,7 +10,7 @@ export interface LedgerView {
   readonly row: LedgerRow;
   readonly classification: Classification | null;
   readonly causeDescription: string | null;
-  /** Only present for Lane 2 rows. */
+
   readonly dispute: AssessedCase | null;
 }
 
@@ -35,13 +22,6 @@ export function getReport(): BenchReport {
   return cachedReport;
 }
 
-/**
- * The unified ledger: failed recurring debits and disputes in one list.
- *
- * This function is the architecture claim made concrete. Both sources produce
- * `LedgerRow`, so the table below does not branch on source except to render a
- * badge.
- */
 export function getLedger(): LedgerView[] {
   if (cachedViews) return cachedViews;
 
@@ -81,7 +61,6 @@ export function getRow(id: string): LedgerView | null {
   return getLedger().find((v) => v.row.id === id) ?? null;
 }
 
-/** Headline counts for the ledger screen. */
 export function getSummary() {
   const ledger = getLedger();
   const atRisk = ledger.reduce((s, v) => s + v.row.amountPaise, 0);

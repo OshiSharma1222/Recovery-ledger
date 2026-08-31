@@ -1,12 +1,3 @@
-/**
- * Screen 2: row detail.
- *
- * The screen the video spends the most time on. It answers, for one row:
- * what did the gateway say, what does that actually mean, what are we doing
- * about it, and why. The rationale is rendered verbatim from the policy
- * engine -- it is not written for the UI, which is the point.
- */
-
 import Link from "next/link";
 import { notFound } from "next/navigation";
 

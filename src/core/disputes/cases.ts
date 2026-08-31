@@ -1,13 +1,3 @@
-/**
- * Loading the hand-authored dispute cases and folding them into the ledger.
- *
- * Nine cases, authored rather than simulated. They exist to exercise every
- * branch of the evidence engine -- a clear contest, a clear abandon, a
- * blocking gap, a complete packet that is still EV-negative, and the Lane 1
- * overlap -- not to support a statistical claim. Lane 2 makes no quantitative
- * claim at all, and the README says so.
- */
-
 import { readFileSync } from "node:fs";
 
 import { newLedgerRow, type LedgerRow } from "../ledger.js";
@@ -26,13 +16,7 @@ export interface DisputeCase {
   readonly merchantNote: string;
   readonly raisedOnDay: number;
   readonly available: readonly EvidenceKind[];
-  /**
-   * What actually happened, authored alongside the case.
-   *
-   * NEVER passed to the evidence engine or the drafter. It is here so a
-   * reviewer can check whether the recommendation was sensible, in the same
-   * spirit as the simulator's latent state in Lane 1.
-   */
+
   readonly truth: string;
 }
 
@@ -48,8 +32,6 @@ export function loadDisputeCases(path: string = DEFAULT_PATH): DisputeCase[] {
     throw new Error(`No dispute cases found in ${path}`);
   }
   for (const c of parsed.cases) {
-    // Fail loudly on a typo in the data file rather than silently scoring a
-    // case against a reason code that does not exist.
     reasonCode(c.reasonCodeId);
     if (!Number.isInteger(c.amountPaise) || c.amountPaise <= 0) {
       throw new Error(`Case ${c.id} has a non-integer or non-positive amount`);
@@ -64,14 +46,6 @@ export interface AssessedCase {
   readonly row: LedgerRow;
 }
 
-/**
- * Assess every case and produce the ledger row for each.
- *
- * This is the structural payoff of the whole project: a dispute becomes a
- * `LedgerRow` with `source: "DISPUTE"` and flows through the same table, the
- * same statuses and the same dashboard as a failed recurring debit. Nothing in
- * `ledger.ts` needed to change to accommodate it.
- */
 export function assessAllCases(path: string = DEFAULT_PATH): AssessedCase[] {
   return loadDisputeCases(path).map((dispute) => {
     const assessment = assessEvidence(
@@ -88,8 +62,7 @@ export function assessAllCases(path: string = DEFAULT_PATH): AssessedCase[] {
       customerId: dispute.customerId,
       rawCode: `${rc.network} ${rc.code}`,
       failedOnDay: dispute.raisedOnDay,
-      // Disputes have no instrument-level failure, so these carry the case's
-      // own context rather than a debit's. The schema absorbs it unchanged.
+
       instrumentType: "CARD",
       segment: "SALARY_MID_MONTH",
       issuerBank: rc.network,

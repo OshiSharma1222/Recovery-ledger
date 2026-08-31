@@ -1,22 +1,3 @@
-/**
- * Root cause classification: raw reason code + context -> RootCause.
- *
- * BE HONEST ABOUT WHAT THIS IS. This file is rules. It is a mapping from
- * gateway strings to a domain model, disambiguated with data the merchant
- * already holds. There is no machine learning here and calling it "AI
- * classification" would be a lie a reviewer would catch in thirty seconds.
- *
- * The learned component of this project lives in `policy/timing.ts`, which
- * estimates P(success | cause, segment, day) from observed outcomes. That is
- * where the lift over fixed-schedule dunning actually comes from, and keeping
- * the two clearly separated is the point of this comment.
- *
- * What makes the rules non-trivial is that the raw code space is genuinely
- * ambiguous. `payment_failed` and `payment_declined` are each emitted by
- * several unrelated causes, and `mandate_not_active` means either "expired" or
- * "revoked" -- which demand opposite actions. Disambiguating needs context.
- */
-
 import type { LedgerRow } from "./ledger.js";
 import {
   assertNever,
@@ -24,54 +5,28 @@ import {
   type RootCause,
 } from "./taxonomy.js";
 
-// ---------------------------------------------------------------------------
-// Context
-// ---------------------------------------------------------------------------
-
-/**
- * The merchant's own record of the mandate.
- *
- * This is NOT latent state smuggled in. A merchant registered the mandate, so
- * it holds the authorised cap and the expiry date on its own systems. The
- * uncomfortable observation behind this whole project is that most dunning
- * stacks never join this record to the retry decision -- they see
- * `transaction_limit_exceeded`, mark it retryable, and re-present the same
- * amount against the same cap on days 1, 3 and 5.
- */
 export interface MandateContext {
-  /** Per-mandate amount cap authorised at registration, in paise. */
   readonly capPaise: number;
-  /** Simulation day the mandate lapses. */
+
   readonly expiryDay: number;
-  /** Simulation day the payment instrument expires, if it has one. */
+
   readonly instrumentExpiryDay: number | null;
 }
 
 export interface ClassificationContext {
   readonly row: LedgerRow;
   readonly mandate: MandateContext;
-  /**
-   * Whether the gateway's downtime feed reported this issuer as degraded at
-   * the time of the debit. Razorpay publishes a Downtime API for exactly this,
-   * so it is available to any merchant who asks for it.
-   */
+
   readonly issuerDegraded: boolean;
 }
 
 export interface Classification {
   readonly cause: RootCause;
-  /**
-   * How much the rule trusts itself, 0..1. Low confidence is not decoration:
-   * the policy engine spends fewer attempts on rows it cannot explain.
-   */
+
   readonly confidence: number;
-  /** Human-readable evidence, surfaced verbatim in the dashboard. */
+
   readonly evidence: readonly string[];
 }
-
-// ---------------------------------------------------------------------------
-// Rule table
-// ---------------------------------------------------------------------------
 
 type Resolver = (ctx: ClassificationContext) => Classification;
 
@@ -81,12 +36,10 @@ const cause = (
   ...evidence: string[]
 ): Classification => ({ cause: c, confidence, evidence });
 
-/** Did the mandate lapse on or before the debit? Merchant-known, so certain. */
 function mandateHasExpired(ctx: ClassificationContext): boolean {
   return ctx.row.failedOnDay >= ctx.mandate.expiryDay;
 }
 
-/** Did the presented amount exceed the authorised cap? Also merchant-known. */
 function exceedsCap(ctx: ClassificationContext): boolean {
   return ctx.row.amountPaise > ctx.mandate.capPaise;
 }
@@ -126,22 +79,10 @@ const downtime = (ctx: ClassificationContext, conf: number, why: string) =>
       : `downtime feed shows no ${ctx.row.issuerBank} incident; code taken at face value`,
   );
 
-/**
- * Exhaustive over every documented raw code.
- *
- * `Record<RawReasonCode, Resolver>` is deliberate: adding a code to
- * RAW_REASON_CODES without giving it a classification rule is a build error.
- * Same guarantee as the `never` check in the policy engine, one layer down.
- */
 const RULES: Record<RawReasonCode, Resolver> = {
-  // --- balance: unambiguous ---
   insufficient_funds: () =>
     cause({ kind: "INSUFFICIENT_FUNDS" }, 0.97, "gateway named the cause directly"),
 
-  // --- mandate lifecycle ---
-  // The critical disambiguation in the whole file. Same string, opposite
-  // actions: an expired mandate deserves a renewal nudge, a revoked one
-  // deserves to be left alone. Guessing wrong wastes either money or goodwill.
   mandate_not_active: (ctx) =>
     mandateHasExpired(ctx)
       ? expired(ctx, 0.94, "mandate inactive and our own record shows it lapsed")
@@ -153,8 +94,7 @@ const RULES: Record<RawReasonCode, Resolver> = {
         ),
   mandate_creation_expired: (ctx) =>
     expired(ctx, 0.9, "gateway reports the mandate registration expired"),
-  // Registration never completed, so there is no live mandate to debit. The
-  // fix is a fresh registration, which is the same action as expiry.
+
   mandate_creation_declined: (ctx) =>
     expired(ctx, 0.7, "mandate registration was declined; no live mandate exists"),
   mandate_creation_failed: (ctx) =>
@@ -162,7 +102,6 @@ const RULES: Record<RawReasonCode, Resolver> = {
   mandate_creation_timeout: (ctx) =>
     expired(ctx, 0.65, "mandate registration timed out; no live mandate exists"),
 
-  // --- pre-debit notification (RBI) ---
   reqauth_mandate_not_acknowledged: () =>
     cause(
       { kind: "PRE_DEBIT_NOTICE_FAILED" },
@@ -177,7 +116,6 @@ const RULES: Record<RawReasonCode, Resolver> = {
       "mandate registered but not yet active at the bank for this debit",
     ),
 
-  // --- amount caps ---
   transaction_limit_exceeded: (ctx) =>
     exceedsCap(ctx)
       ? capped(ctx, 0.96, "amount exceeds the cap on our own mandate record")
@@ -197,21 +135,17 @@ const RULES: Record<RawReasonCode, Resolver> = {
   amount_less_than_minimum_amount: () =>
     cause({ kind: "TECHNICAL_DECLINE" }, 0.8, "amount below the gateway minimum"),
 
-  // Frequency and count limits are time-bound, not amount-bound. Splitting
-  // makes them worse; waiting fixes them.
   transaction_daily_count_exceeded: () =>
     cause({ kind: "TECHNICAL_DECLINE" }, 0.76, "daily transaction count exhausted; a later day clears it"),
   transaction_frequency_limit_exceeded: () =>
     cause({ kind: "TECHNICAL_DECLINE" }, 0.76, "NPCI frequency limit exhausted; a later day clears it"),
 
-  // --- instrument validity ---
   card_expired: () => cause({ kind: "CARD_EXPIRED" }, 0.98, "card past expiry"),
   incorrect_card_expiry_date: () =>
     cause({ kind: "CARD_EXPIRED" }, 0.8, "expiry date rejected; stored card is stale"),
   card_number_invalid: () =>
     cause({ kind: "CARD_EXPIRED" }, 0.75, "stored card number no longer valid"),
-  // Cause names are card-centric; the recovery action (ask for a new
-  // instrument) generalises to bank accounts unchanged.
+
   bank_account_invalid: () =>
     cause({ kind: "CARD_EXPIRED" }, 0.85, "bank account closed or invalid; new instrument needed"),
   incorrect_ifsc: () =>
@@ -219,7 +153,6 @@ const RULES: Record<RawReasonCode, Resolver> = {
   debit_instrument_inactive: () =>
     cause({ kind: "CARD_EXPIRED" }, 0.7, "instrument marked inactive by the issuer"),
 
-  // --- customer revoked / blocked ---
   payment_cancelled: () =>
     cause(
       { kind: "MANDATE_REVOKED" },
@@ -231,21 +164,18 @@ const RULES: Record<RawReasonCode, Resolver> = {
   transaction_on_vpa_restricted: () =>
     cause({ kind: "MANDATE_REVOKED" }, 0.78, "transactions on this VPA are restricted"),
 
-  // --- issuer downtime ---
   bank_technical_error: (ctx) => downtime(ctx, 0.84, "issuing bank reported a technical error"),
   bank_not_available: (ctx) => downtime(ctx, 0.9, "issuing bank unavailable"),
   issuer_technical_error: (ctx) => downtime(ctx, 0.87, "card issuer reported a technical error"),
   psp_not_available: (ctx) => downtime(ctx, 0.86, "PSP unavailable"),
   psp_app_not_available: (ctx) => downtime(ctx, 0.83, "customer's PSP app unavailable"),
   upi_app_technical_error: (ctx) => downtime(ctx, 0.78, "technical error at the customer's PSP"),
-  // Scheduled, not random: core banking cutoff runs to a nightly window, so
-  // this is the most predictable failure class in the entire taxonomy.
+
   bank_cutoff_in_progress: (ctx) =>
     downtime(ctx, 0.92, "core banking cutoff window in progress"),
   payment_declined_due_to_high_traffic: (ctx) =>
     downtime(ctx, 0.8, "gateway shed load under traffic"),
 
-  // --- transient technical ---
   gateway_technical_error: () =>
     cause({ kind: "TECHNICAL_DECLINE" }, 0.85, "technical error at the gateway"),
   server_error: () =>
@@ -265,10 +195,6 @@ const RULES: Record<RawReasonCode, Resolver> = {
       "request rejected on validation; cause is genuinely unclear from the code alone",
     ),
 
-  // --- ambiguous issuer declines ---
-  // These are the hard ones. The code carries almost no information, so the
-  // rule leans entirely on merchant-side records and admits low confidence
-  // when those come back empty.
   payment_declined: (ctx) =>
     exceedsCap(ctx)
       ? capped(ctx, 0.8, "declined, and the amount exceeds our authorised cap")
@@ -295,7 +221,6 @@ const RULES: Record<RawReasonCode, Resolver> = {
       ? cause({ kind: "CARD_EXPIRED" }, 0.88, "card declined and our record shows it expired")
       : cause({ kind: "DO_NOT_HONOUR" }, 0.55, "card declined without a specific reason"),
 
-  // --- risk ---
   payment_risk_check_failed: () =>
     cause(
       { kind: "RISK_BLOCKED" },
@@ -307,17 +232,6 @@ const RULES: Record<RawReasonCode, Resolver> = {
     cause({ kind: "RISK_BLOCKED" }, 0.93, "blocked on compliance grounds"),
 };
 
-// ---------------------------------------------------------------------------
-// Entry point
-// ---------------------------------------------------------------------------
-
-/**
- * Classify one failed debit.
- *
- * Unknown codes are not guessed at. An unrecognised string becomes a
- * low-confidence DO_NOT_HONOUR, which the policy treats conservatively, rather
- * than being forced into whichever bucket happens to be nearest.
- */
 export function classify(ctx: ClassificationContext): Classification {
   const rule = RULES[ctx.row.rawCode as RawReasonCode] as Resolver | undefined;
   if (!rule) {
@@ -331,10 +245,6 @@ export function classify(ctx: ClassificationContext): Classification {
   return rule(ctx);
 }
 
-/**
- * A one-line explanation of a cause, for the dashboard and the video.
- * The `never` check means a new cause cannot ship without a description.
- */
 export function describeCause(c: RootCause): string {
   switch (c.kind) {
     case "INSUFFICIENT_FUNDS":

@@ -1,14 +1,4 @@
 #!/usr/bin/env bash
-#
-# Proves the claim the video makes out loud: adding a failure cause without
-# deciding what to do about it is a BUILD ERROR, not a production incident.
-#
-#   bash scripts/prove-exhaustiveness.sh
-#
-# Temporarily adds an unhandled variant to the RootCause union, runs tsc, shows
-# the errors, and restores the file. Expected result: three failures, in the
-# classifier, the policy engine, and the simulator's response model -- the three
-# places that must have an opinion about every cause.
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -40,9 +30,6 @@ fs.writeFileSync(
 echo "Added an unhandled RootCause variant. Type-checking..."
 echo
 
-# tsc is EXPECTED to exit non-zero here, so capture its output rather than
-# piping it -- under `set -o pipefail` a failing tsc would poison the pipeline
-# even when grep finds exactly what we want.
 OUTPUT="$(npx tsc --noEmit 2>&1)"
 MATCHES="$(printf '%s\n' "$OUTPUT" | grep "not assignable to parameter of type 'never'" || true)"
 

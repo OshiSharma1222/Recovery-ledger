@@ -1,11 +1,3 @@
-/**
- * Screen 3: benchmark results.
- *
- * Deliberately the same numbers `npm run bench` prints, from the same code
- * path. If this screen and the terminal ever disagreed, the reviewer would be
- * right to disbelieve both.
- */
-
 import { getReport } from "@/lib/data";
 import { Card, formatRupees, Stat } from "@/components/ui";
 

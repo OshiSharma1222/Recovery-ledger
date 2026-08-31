@@ -1,13 +1,3 @@
-/**
- * Day 1 exit criterion, made executable.
- *
- *   npm run seed
- *
- * Generates a population, runs one billing cycle, writes every failed debit to
- * the ledger, and prints what landed. The database it writes is what the Day 4
- * dashboard reads.
- */
-
 import { LedgerStore } from "../src/core/ledger-store.js";
 import { assertParamsWellFormed, SIM } from "../src/core/simulator/params.js";
 import { buildWorld } from "../src/core/simulator/population.js";
@@ -40,9 +30,6 @@ function main(): void {
   console.log(`  written to        ${DB_PATH}`);
   console.log("");
 
-  // Ground-truth cause mix. This is the simulator's private truth, printed
-  // here only because it is the thing Day 1 needs to eyeball; the policy never
-  // gets to see it.
   const byCause = new Map<RootCauseKind, { n: number; paise: number }>();
   for (const [, failure] of world.latent) {
     const key = failure.trueCause.kind;
