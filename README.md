@@ -351,4 +351,3 @@ results/             benchmark.md and robustness.md, generated
 
 ---
 
-Built for the Razorpay AI Buildathon, Track 3: AI Revenue Recovery.
