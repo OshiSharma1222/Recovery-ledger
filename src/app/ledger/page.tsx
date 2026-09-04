@@ -28,10 +28,11 @@ export default async function LedgerTablePage({
         <Eyebrow>Lane 1 + Lane 2{seed ? ` · world "${seed}"` : ""}</Eyebrow>
         <PageTitle>The ledger</PageTitle>
         <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-sub">
-          Every rupee this merchant is owed and has not got. Money that was
-          never captured (failed recurring debits) and money that was captured
-          and clawed back (disputes) are two <em>sources</em> feeding one
-          schema and one policy interface.
+          The merchant&rsquo;s list of stuck money, one row per rupee at
+          risk. Failed subscription payments and chargebacks sit in the same
+          table because they are the same problem. Click any row to see its
+          full story: what the bank said, what it really means, and what the
+          engine chose to do about it.
         </p>
       </div>
 
@@ -71,11 +72,11 @@ export default async function LedgerTablePage({
             <thead>
               <tr className="border-b border-line text-[11px] uppercase tracking-[0.08em] text-faint">
                 <th className="px-5 py-3 font-medium">Row</th>
-                <th className="px-4 py-3 font-medium">Source</th>
+                <th className="px-4 py-3 font-medium">Type</th>
                 <th className="px-4 py-3 text-right font-medium">Amount</th>
-                <th className="px-4 py-3 font-medium">Raw code</th>
-                <th className="px-4 py-3 font-medium">Root cause</th>
-                <th className="px-4 py-3 font-medium">Action</th>
+                <th className="px-4 py-3 font-medium">What the bank said</th>
+                <th className="px-4 py-3 font-medium">Why it failed</th>
+                <th className="px-4 py-3 font-medium">What we did</th>
                 <th className="px-5 py-3 font-medium">Status</th>
               </tr>
             </thead>
@@ -125,8 +126,10 @@ export default async function LedgerTablePage({
       </div>
 
       <p className="max-w-2xl text-[13px] leading-relaxed text-faint">
-        Root causes in red are terminal: no retry can ever succeed on them.
-        Actions in amber are decisions to stop, not failures to recover.
+        Red reasons are dead ends: no retry can ever bring that money back.
+        Amber actions mean the engine chose to stop chasing, which is a
+        decision, not a failure. Every other row gets the one fix that can
+        actually work.
       </p>
     </div>
   );

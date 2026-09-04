@@ -1,4 +1,5 @@
 import { getReport, normalizeSeed } from "@/lib/data";
+import { policyById } from "@/core/policy/baselines";
 import {
   Card,
   Eyebrow,
@@ -28,11 +29,14 @@ export default async function BenchmarkPage({
   return (
     <div className="space-y-8">
       <div>
-        <Eyebrow>Six policies, one seeded world{seed ? ` · "${seed}"` : ""}</Eyebrow>
+        <Eyebrow>
+          Six strategies, one fair test{seed ? ` · world "${seed}"` : ""}
+        </Eyebrow>
         <PageTitle>The proof</PageTitle>
         <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-sub">
-          Every policy runs over the same population with the same attempt
-          budget and the same classifications. Reproduce it with{" "}
+          Six strategies chase the same pool of failed payments, with the same
+          number of allowed tries. Then we count what each one actually got
+          back. Reproduce it with{" "}
           <code className="bg-linefaint px-1.5 py-0.5 font-mono text-[13px] text-ink">
             npm run bench
           </code>. No API key, no database, no network.
@@ -43,7 +47,7 @@ export default async function BenchmarkPage({
         <div className="flex flex-wrap items-end justify-between gap-6 px-6 py-6 sm:px-8">
           <div>
             <div className="text-[13px] text-sub">
-              Recovered vs the fixed day-1/3/5 schedule
+              More money recovered than the usual retry schedule
             </div>
             <div className="mt-2 text-[56px] font-semibold leading-none tracking-tight text-good">
               +{(lift * 100).toFixed(1)}%
@@ -56,19 +60,19 @@ export default async function BenchmarkPage({
           </div>
           <div className="grid grid-cols-3 divide-x divide-line border border-line">
             <Stat
-              label="Of ceiling"
+              label="Of winnable"
               value={`${((b3.ceilingCapture ?? 0) * 100).toFixed(1)}%`}
-              hint="share of the oracle"
+              hint="of what was winnable at all"
             />
             <Stat
-              label="Fewer retries"
+              label="Fewer tries"
               value={`−${(retrySaving * 100).toFixed(1)}%`}
-              hint="vs fixed schedule"
+              hint="less work for more money"
             />
             <Stat
-              label="Wasted attempts"
+              label="Less waste"
               value={`−${(wasteSaving * 100).toFixed(1)}%`}
-              hint="on unrecoverable rows"
+              hint="tries on hopeless payments"
             />
           </div>
         </div>
@@ -80,16 +84,16 @@ export default async function BenchmarkPage({
             <thead>
               <tr className="border-b border-line text-[11px] uppercase tracking-[0.08em] text-faint">
                 <th className="px-5 py-3 font-medium">Policy</th>
-                <th className="px-4 py-3 text-right font-medium">Recovered</th>
+                <th className="px-4 py-3 text-right font-medium">Got back</th>
                 <th className="w-40 px-4 py-3 font-medium max-md:hidden">
                   Share of at-risk
                 </th>
-                <th className="px-4 py-3 text-right font-medium">Rate</th>
-                <th className="px-4 py-3 text-right font-medium">Of ceiling</th>
-                <th className="px-4 py-3 text-right font-medium">Retries</th>
-                <th className="px-4 py-3 text-right font-medium">Wasted</th>
+                <th className="px-4 py-3 text-right font-medium">Success</th>
+                <th className="px-4 py-3 text-right font-medium">Of winnable</th>
+                <th className="px-4 py-3 text-right font-medium">Tries</th>
+                <th className="px-4 py-3 text-right font-medium">Dead tries</th>
                 <th className="px-4 py-3 text-right font-medium">Per win</th>
-                <th className="px-4 py-3 text-right font-medium">Nudges</th>
+                <th className="px-4 py-3 text-right font-medium">Messages</th>
                 <th className="px-5 py-3 text-right font-medium">Days</th>
               </tr>
             </thead>
@@ -114,6 +118,9 @@ export default async function BenchmarkPage({
                       >
                         {m.policyName}
                       </span>
+                      <p className="mt-1 max-w-72 text-xs leading-relaxed text-faint">
+                        {policyById(m.policyId).description}
+                      </p>
                     </td>
                     <td
                       className={`px-4 py-3.5 text-right tabular-nums ${isB3 ? "font-semibold" : "font-medium"}`}
@@ -165,8 +172,18 @@ export default async function BenchmarkPage({
         </div>
       </div>
 
+      <p className="max-w-3xl text-[13px] leading-relaxed text-faint">
+        Reading the table: <strong className="text-sub">Got back</strong> is money
+        returned. <strong className="text-sub">Of winnable</strong> compares
+        against the cheating oracle, because about a quarter of this money is
+        impossible for anyone to recover. <strong className="text-sub">Dead
+        tries</strong> are retries spent on payments that could never succeed,
+        like an expired mandate. <strong className="text-sub">Messages</strong>{" "}
+        counts texts and emails sent to customers: lower is kinder.
+      </p>
+
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card title="Why the oracle is here">
+        <Card title="Why compare against a cheat?">
           <p className="text-sm leading-relaxed text-sub">
             A bare recovery rate invites the question &ldquo;out of
             what?&rdquo;. {formatRupees(b3.unrecoverablePaise)} of this ledger, or{" "}

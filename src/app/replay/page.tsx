@@ -18,10 +18,12 @@ export default async function ReplayPage({
         </Eyebrow>
         <PageTitle>Watch it work</PageTitle>
         <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-sub">
-          The same {data.policies[0]!.rows.length.toLocaleString("en-IN")} failed
-          debits, resolved day by day under two policies. The fixed schedule
-          retries everything blindly. The ledger classifies, times its retries,
-          and walks away from rows it cannot win.
+          A race. The same{" "}
+          {data.policies[0]!.rows.length.toLocaleString("en-IN")} failed
+          payments are given to two systems. Grey is the usual way: retry
+          everything on a schedule. Green is this project: understand each
+          failure, act once and well, and give up on the hopeless ones. Press
+          play and watch the money come back.
         </p>
       </div>
       <ReplayPlayer data={data} />

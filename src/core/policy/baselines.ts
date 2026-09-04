@@ -61,7 +61,8 @@ const retryAt = (offset: number, p: number, rationale: string): Decision => ({
 export const B0_NONE: Policy = {
   id: "B0",
   name: "No recovery",
-  description: "Write off every failed debit. The floor.",
+  description:
+    "Gives up on every failed payment. Shows how much money walks away when nobody chases it.",
   usesOracle: false,
   decide: () => stop("No recovery attempted."),
 };
@@ -72,8 +73,8 @@ export const B1_FIXED: Policy = {
   id: "B1",
   name: "Fixed retry (days 1/3/5)",
   description:
-    "Retry every failed debit on days 1, 3 and 5 regardless of why it failed. " +
-    "No concept of a cause and no concept of stopping.",
+    "Retries every failure on days 1, 3 and 5, no questions asked. This is what " +
+    "most billing systems actually do.",
   usesOracle: false,
   decide: (ctx) => {
     const offset = FIXED_SCHEDULE[ctx.retriesSpent];
@@ -94,8 +95,8 @@ export const B2_BACKOFF: Policy = {
   id: "B2",
   name: "Exponential backoff",
   description:
-    "Retry on days 1, 2, 4 and 8. Smarter about transient faults than a fixed " +
-    "schedule, but still blind to the cause and still unable to stop early.",
+    "Retries with growing gaps: days 1, 2, 4, 8. A little smarter about glitches, " +
+    "still blind to why the payment failed.",
   usesOracle: false,
   decide: (ctx) => {
     const offset = BACKOFF_SCHEDULE[ctx.retriesSpent];
@@ -114,9 +115,9 @@ export const B2T_TIMED: Policy = {
   id: "B2T",
   name: "Smart timing, cause-blind",
   description:
-    "Uses the same learned timing model as B3 to pick the best retry day for " +
-    "every failure, but never classifies the cause, never nudges, and never " +
-    "stops early. A stand-in for commercial smart-retry products.",
+    "Retries at the smartest possible moments, using the same timing brain this " +
+    "project uses, but never asks why a payment failed. A stand-in for commercial " +
+    "smart-retry products.",
   usesOracle: false,
   decide: (ctx) => {
     if (ctx.retriesSpent >= 4) {
@@ -148,8 +149,8 @@ export const B3_LEDGER: Policy = {
   id: "B3",
   name: "Recovery Ledger",
   description:
-    "Classify the root cause, then choose the action that can actually work -- " +
-    "including abandoning rows where no action can.",
+    "This project. Finds out why each payment failed, picks the one fix that can " +
+    "actually work, and walks away when nothing can.",
   usesOracle: false,
   decide: (ctx) =>
 
@@ -183,9 +184,8 @@ export const B4_ORACLE: Policy = {
   id: "B4",
   name: "Oracle (ceiling)",
   description:
-    "Sees every latent variable -- salary day, true balance curve, mandate " +
-    "state, responsiveness, downtime schedule -- and takes the best available " +
-    "action. A very strong upper bound, not a proven optimum.",
+    "A cheat. It can see things no real system can know, like the customer's true " +
+    "bank balance and payday, so it marks the practical upper limit.",
   usesOracle: true,
   decide: (ctx) => {
     if (!ctx.oracle) {
@@ -193,7 +193,7 @@ export const B4_ORACLE: Policy = {
     }
     const { failure, downtime } = ctx.oracle;
     const c = failure.customer;
-    const cause = failure.trueCause; // ground truth, not a classification
+    const cause = failure.trueCause;
     const start = ctx.row.failedOnDay;
 
     const budgetLeft = SIM.MAX_ATTEMPTS - ctx.attemptsSpent;
