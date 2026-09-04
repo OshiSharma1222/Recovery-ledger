@@ -29,7 +29,7 @@ export default async function RowPage({
     <div className="space-y-8">
       <div>
         <Link
-          href="/"
+          href={`/ledger${seed ? `?seed=${encodeURIComponent(seed)}` : ""}`}
           className="text-[13px] font-medium text-sub transition-colors hover:text-ink"
         >
           ← Back to the ledger

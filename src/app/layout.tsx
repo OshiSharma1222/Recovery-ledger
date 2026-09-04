@@ -39,7 +39,10 @@ export default function RootLayout({
               </span>
             </Link>
             <nav className="flex items-center gap-6 text-[13px] font-medium">
-              <Link href="/" className="text-paperdim transition-colors hover:text-white">
+              <Link
+                href="/ledger"
+                className="text-paperdim transition-colors hover:text-white"
+              >
                 Ledger
               </Link>
               <Link

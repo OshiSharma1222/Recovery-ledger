@@ -187,7 +187,8 @@ notice was delivered, which is data Lane 1 already manages.
 
 ## Dashboard
 
-Four screens: the ledger table, a day-by-day replay of the recovery race, a row
+Five screens: an animated home page that walks the detect, diagnose, decide,
+stop loop, the ledger table, a day-by-day replay of the recovery race, a row
 detail page (raw code → root cause →
 action → rationale), and the benchmark. Server components call the engine
 directly instead of reading SQLite; the full benchmark takes ~130ms, so the

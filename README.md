@@ -25,7 +25,7 @@ Against the fixed day-1/3/5 schedule, the Recovery Ledger recovers **+36.9% more
 money** while spending **30.5% fewer retries** and **50.4% fewer attempts on rows
 that could never have been recovered**. Against a smart-retry policy that uses the
 same learned timing model but no cause classification (B2T, see below), it still
-recovers **+23.2% more**. It captures **95.9%** of what a policy with perfect
+recovers **+23.1% more**. It captures **95.9%** of what a policy with perfect
 knowledge of every latent variable managed.
 
 Where it loses, reported rather than buried: B3 takes 5.3 days per recovery against
@@ -51,7 +51,7 @@ npm test                   # 60 tests
 npm run seed               # generate a population, write the ledger to SQLite
 npm run decide             # classify one row, show the chosen action and why
 npm run disputes           # Lane 2: evidence gaps, contest or walk away
-npm run dev                # dashboard: ledger, replay, benchmark
+npm run dev                # dashboard: home, ledger, replay, benchmark
 npm run prove:exhaustive   # watch the compiler reject an unhandled failure cause
 ```
 
@@ -100,7 +100,7 @@ gateways generally) learn *when* to retry. B2T is that policy, built from this
 project's own parts: it uses the identical learned timing model B3 uses, picks the
 best remaining window for every retry, and treats every failure the same way.
 
-It recovers ₹42.13L. B3 recovers ₹51.89L, a **+23.2%** gap, while spending 39%
+It recovers ₹42.13L. B3 recovers ₹51.89L, a **+23.1%** gap, while spending 39%
 fewer retries. The entire difference is cause-awareness and bounded recovery:
 knowing that a quarter of the ledger cannot be retried back to life, renewing
 mandates instead of re-presenting into them, splitting cap-breached amounts, and
