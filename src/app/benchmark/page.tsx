@@ -1,5 +1,6 @@
 import { getReport, normalizeSeed } from "@/lib/data";
 import { policyById } from "@/core/policy/baselines";
+import { WorldControl } from "@/components/world-control";
 import {
   Card,
   Eyebrow,
@@ -42,6 +43,13 @@ export default async function BenchmarkPage({
           </code>. No API key, no database, no network.
         </p>
       </div>
+
+      <WorldControl
+        seed={seed}
+        elapsedMs={report.elapsedMs}
+        customers={report.customers}
+        rows={b3.rowsTotal}
+      />
 
       <div className="border border-line bg-card">
         <div className="flex flex-wrap items-end justify-between gap-6 px-6 py-6 sm:px-8">

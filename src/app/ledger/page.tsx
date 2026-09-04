@@ -1,6 +1,7 @@
 import Link from "next/link";
 
-import { getLedger, getSummary, normalizeSeed } from "@/lib/data";
+import { getLedger, getReport, getSummary, normalizeSeed } from "@/lib/data";
+import { WorldControl } from "@/components/world-control";
 import {
   ActionBadge,
   CauseBadge,
@@ -20,6 +21,7 @@ export default async function LedgerTablePage({
   const seed = normalizeSeed((await searchParams).seed);
   const ledger = getLedger(seed);
   const summary = getSummary(seed);
+  const report = getReport(seed);
   const rows = [...ledger].sort((a, b) => b.row.amountPaise - a.row.amountPaise);
 
   return (
@@ -35,6 +37,13 @@ export default async function LedgerTablePage({
           engine chose to do about it.
         </p>
       </div>
+
+      <WorldControl
+        seed={seed}
+        elapsedMs={report.elapsedMs}
+        customers={report.customers}
+        rows={summary.failures}
+      />
 
       <StatRow>
         <Stat

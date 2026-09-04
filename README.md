@@ -66,8 +66,9 @@ it has never seen:
 http://localhost:3000/benchmark?seed=any-words-you-like
 ```
 
-Pick any seed you want. The population, the failures and every number on every
-screen recompute for that world, and the ranking holds. `npm run bench -- --seed=x`
+Or use the box on the ledger, replay and benchmark screens: type any word, press
+Run, and watch every number rebuild. The population, the failures and every number
+on every screen recompute for that world, and the ranking holds. `npm run bench -- --seed=x`
 does the same in the terminal, and `/replay` plays the 90-day recovery race day by
 day so you can watch rows resolve instead of reading a table.
 

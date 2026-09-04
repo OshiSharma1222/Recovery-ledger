@@ -1,4 +1,5 @@
-import { getReplay, normalizeSeed } from "@/lib/data";
+import { getReplay, getReport, normalizeSeed } from "@/lib/data";
+import { WorldControl } from "@/components/world-control";
 import { Eyebrow, PageTitle } from "@/components/ui";
 import { ReplayPlayer } from "@/components/replay";
 
@@ -9,6 +10,7 @@ export default async function ReplayPage({
 }) {
   const seed = normalizeSeed((await searchParams).seed);
   const data = getReplay(seed);
+  const report = getReport(seed);
 
   return (
     <div className="space-y-8">
@@ -26,6 +28,12 @@ export default async function ReplayPage({
           play and watch the money come back.
         </p>
       </div>
+      <WorldControl
+        seed={seed}
+        elapsedMs={report.elapsedMs}
+        customers={report.customers}
+        rows={data.policies[0]!.rows.length}
+      />
       <ReplayPlayer data={data} />
     </div>
   );

@@ -51,9 +51,14 @@ Read this once and you can explain the whole project without notes.
 
 ## The party trick
 
-Add `?seed=anyword` to any page URL. The entire test world regenerates around
-that word, every number changes, and this project still wins. That is the
-proof nothing is hardcoded. In the terminal, `npm run bench` prints the same
+On the ledger, replay and benchmark screens there is a box near the top. Ask
+someone for any word, type it, press Run. A completely new set of customers and
+failures is built around that word, every number on the page changes, and this
+project still wins. That is the proof nothing is hardcoded.
+
+Type the same word twice and you get the identical world back. That is not a
+bug, it is the point: the test is reproducible, so anyone can check your
+numbers. In the terminal, `npm run bench` prints the same
 scoreboard in about a second.
 
 ## The 30-second pitch (say this)

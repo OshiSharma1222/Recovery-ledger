@@ -227,11 +227,11 @@ export default function HomePage() {
               Do not take this page&rsquo;s word for it
             </h2>
             <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-sub">
-              The benchmark is seeded end to end and runs offline. Add{" "}
-              <code className="bg-linefaint px-1 py-0.5 font-mono text-xs">
-                ?seed=anything
-              </code>{" "}
-              to any page here and the entire world regenerates around your word.
+              Every number here is computed when you load the page, never stored. On
+              the ledger, replay and benchmark screens there is a box: type any
+              word, press Run, and a brand new set of customers and failures is
+              built around it. The same word always rebuilds the same world,
+              which is what makes the benchmark reproducible.
             </p>
           </div>
           <code className="bg-header px-5 py-3 font-mono text-[13px] text-goodsoft">
