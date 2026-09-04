@@ -53,6 +53,7 @@ npm run decide             # classify one row, show the chosen action and why
 npm run disputes           # Lane 2: evidence gaps, contest or walk away
 npm run dev                # dashboard: home, ledger, replay, benchmark
 npm run prove:exhaustive   # watch the compiler reject an unhandled failure cause
+npm run build:verify       # production build check, safe while npm run dev is running
 ```
 
 ### Not a recording, not hardcoded

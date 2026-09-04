@@ -15,7 +15,8 @@
     "decide": "tsx scripts/decide.ts",
     "prove:exhaustive": "bash scripts/prove-exhaustiveness.sh",
     "disputes": "tsx scripts/disputes.ts",
-    "bench:sweep": "tsx scripts/bench.ts --sweep=20"
+    "bench:sweep": "tsx scripts/bench.ts --sweep=20",
+    "build:verify": "node -e \"process.env.NEXT_DIST_DIR='.next-verify';require('child_process').execSync('npx next build',{stdio:'inherit',env:process.env})\""
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
