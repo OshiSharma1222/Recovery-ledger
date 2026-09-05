@@ -174,7 +174,7 @@ have an opinion about a cause. This is a real language guarantee, not a claim.
 
 ## Architecture
 
-Plain-words walkthrough: [docs/EXPLAINER.md](docs/EXPLAINER.md). Full architecture: [docs/DESIGN.md](docs/DESIGN.md).
+Pitch deck: [docs/pitch.html](docs/pitch.html), open it in a browser. Plain-words walkthrough: [docs/EXPLAINER.md](docs/EXPLAINER.md). Full architecture: [docs/DESIGN.md](docs/DESIGN.md).
 
 ```
   recurring debits ---.
