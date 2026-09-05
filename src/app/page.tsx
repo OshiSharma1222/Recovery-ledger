@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getReport } from "@/lib/data";
 import { Eyebrow, formatRupees } from "@/components/ui";
 import { CountUp, DecisionTicker, type TickerItem } from "@/components/home-motion";
+import { HeroDiagram } from "@/components/hero-diagram";
 
 const TICKER_ORDER = [
   "RETRY_AT",
@@ -54,6 +55,8 @@ export default function HomePage() {
     <div className="space-y-16 pb-6">
       <section className="relative left-1/2 -mt-10 w-screen -translate-x-1/2 bg-header">
         <div className="mx-auto max-w-6xl px-6 pb-16 pt-16 sm:pt-20">
+          <div className="grid items-center gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,1fr)_470px]">
+            <div>
           <p className="rise rise-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-paperdim">
             AI revenue recovery, bounded by design
           </p>
@@ -81,6 +84,11 @@ export default function HomePage() {
             >
               See the proof
             </Link>
+          </div>
+            </div>
+            <div className="rise rise-4 hidden lg:block">
+              <HeroDiagram />
+            </div>
           </div>
           <div className="rise rise-5 mt-12 flex flex-wrap items-end gap-x-12 gap-y-6 border-t border-headerline pt-8">
             <div>

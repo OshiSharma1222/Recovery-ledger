@@ -15,7 +15,7 @@ export function CountUp({
   durationMs?: number;
   className?: string;
 }) {
-  const [shown, setShown] = useState(0);
+  const [shown, setShown] = useState(value);
   const started = useRef(false);
 
   useEffect(() => {
@@ -23,10 +23,7 @@ export function CountUp({
     started.current = true;
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) {
-      setShown(value);
-      return;
-    }
+    if (reduced) return;
 
     let raf = 0;
     const t0 = performance.now();

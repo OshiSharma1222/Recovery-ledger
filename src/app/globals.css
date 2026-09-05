@@ -96,3 +96,47 @@ body {
     display: none;
   }
 }
+
+@keyframes hd-flow {
+  to {
+    stroke-dashoffset: -22;
+  }
+}
+
+@keyframes hd-pulse {
+  0%,
+  100% {
+    opacity: 0.15;
+    r: 34;
+  }
+  50% {
+    opacity: 0.55;
+    r: 37;
+  }
+}
+
+.hero-diagram .hd-line {
+  stroke-dasharray: 5 6;
+  animation: hd-flow 1s linear infinite;
+}
+.hero-diagram .hd-good {
+  animation-duration: 1.3s;
+}
+.hero-diagram .hd-warn {
+  animation-duration: 2.6s;
+}
+.hero-diagram .hd-ring {
+  opacity: 0.2;
+  animation: hd-pulse 3s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-diagram .hd-line {
+    stroke-dasharray: none;
+    animation: none;
+  }
+  .hero-diagram .hd-ring {
+    animation: none;
+    opacity: 0.3;
+  }
+}
