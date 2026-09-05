@@ -55,36 +55,36 @@ export default function HomePage() {
     <div className="space-y-16 pb-6">
       <section className="relative left-1/2 -mt-10 w-screen -translate-x-1/2 bg-header">
         <div className="mx-auto max-w-6xl px-6 pb-16 pt-16 sm:pt-20">
-          <div className="grid items-center gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,1fr)_470px]">
+          <div className="grid items-center gap-x-12 gap-y-10 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div>
-          <p className="rise rise-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-paperdim">
-            AI revenue recovery, bounded by design
-          </p>
-          <h1 className="rise rise-2 mt-4 max-w-3xl font-display text-[44px] font-medium leading-[1.08] tracking-tight text-white sm:text-[56px]">
-            Every unrecovered rupee.
-            <br />
-            One ledger. One decision.
-          </h1>
-          <p className="rise rise-3 mt-5 max-w-xl text-[15px] leading-relaxed text-paperdim">
-            Failed recurring debits and disputes are the same problem: money the
-            merchant is owed and has not got. Recovery Ledger classifies why
-            each rupee is stuck, chooses the one action that can work, and
-            walks away from the rupees nothing can bring back.
-          </p>
-          <div className="rise rise-4 mt-9 flex flex-wrap items-center gap-4">
-            <Link
-              href="/replay"
-              className="bg-white px-6 py-3 text-[14px] font-semibold text-ink transition-opacity hover:opacity-85"
-            >
-              Watch it work
-            </Link>
-            <Link
-              href="/benchmark"
-              className="border border-headerline px-6 py-3 text-[14px] font-medium text-paperdim transition-colors hover:border-white hover:text-white"
-            >
-              See the proof
-            </Link>
-          </div>
+              <p className="rise rise-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-paperdim">
+                AI revenue recovery, bounded by design
+              </p>
+              <h1 className="rise rise-2 mt-4 max-w-3xl font-display text-[44px] font-medium leading-[1.08] tracking-tight text-white sm:text-[56px]">
+                Every unrecovered rupee.
+                <br />
+                One ledger. One decision.
+              </h1>
+              <p className="rise rise-3 mt-5 max-w-xl text-[15px] leading-relaxed text-paperdim">
+                Failed recurring debits and disputes are the same problem: money the
+                merchant is owed and has not got. Recovery Ledger classifies why
+                each rupee is stuck, chooses the one action that can work, and
+                walks away from the rupees nothing can bring back.
+              </p>
+              <div className="rise rise-4 mt-9 flex flex-wrap items-center gap-4">
+                <Link
+                  href="/replay"
+                  className="bg-white px-6 py-3 text-[14px] font-semibold text-ink transition-opacity hover:opacity-85"
+                >
+                  Watch it work
+                </Link>
+                <Link
+                  href="/benchmark"
+                  className="border border-headerline px-6 py-3 text-[14px] font-medium text-paperdim transition-colors hover:border-white hover:text-white"
+                >
+                  See the proof
+                </Link>
+              </div>
             </div>
             <div className="rise rise-4 hidden lg:block">
               <HeroDiagram />
