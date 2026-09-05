@@ -57,6 +57,14 @@ export default function RootLayout({
               >
                 Benchmark
               </Link>
+              <a
+                href="https://github.com/OshiSharma1222/Recovery-ledger"
+                target="_blank"
+                rel="noreferrer"
+                className="hidden text-paperdim transition-colors hover:text-white sm:inline"
+              >
+                GitHub
+              </a>
             </nav>
           </div>
         </header>
