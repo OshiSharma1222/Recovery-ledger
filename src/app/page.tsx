@@ -78,26 +78,26 @@ export default function HomePage() {
   }
 
   return (
-    <div className="space-y-20 pb-6">
+    <div className="space-y-14 pb-6">
       <section className="relative left-1/2 -mt-10 w-screen -translate-x-1/2 bg-header">
-        <div className="mx-auto max-w-3xl px-6 pb-20 pt-16 text-center sm:pt-20">
+        <div className="mx-auto max-w-3xl px-6 pb-14 pt-12 text-center sm:pt-16">
           <p className="rise rise-1 inline-flex flex-wrap items-center justify-center gap-x-2 rounded-full border border-headerline bg-[#1c202b] px-4 py-1.5 text-[12px] text-paperdim">
             Built for
             <span className="font-medium text-white">Razorpay AI Buildathon 2026</span>
             <span aria-hidden="true" className="text-paperdim opacity-50">/</span>
             AI Revenue Recovery
           </p>
-          <h1 className="rise rise-2 mt-7 font-display text-[42px] font-medium leading-[1.06] tracking-tight text-white sm:text-[56px]">
+          <h1 className="rise rise-2 mt-5 font-display text-[42px] font-medium leading-[1.06] tracking-tight text-white sm:text-[56px]">
             Stop chasing the money
             <br />
             that <em>cannot</em> come back
           </h1>
-          <p className="rise rise-3 mx-auto mt-6 max-w-xl text-[16px] leading-relaxed text-paperdim">
+          <p className="rise rise-3 mx-auto mt-4 max-w-xl text-[16px] leading-relaxed text-paperdim">
             Recovery Ledger reads why each subscription payment failed, takes the
             one action that can actually work, and walks away from the quarter of
             the money that no retry will ever bring back.
           </p>
-          <div className="rise rise-4 mt-9 flex flex-wrap items-center justify-center gap-3">
+          <div className="rise rise-4 mt-7 flex flex-wrap items-center justify-center gap-3">
             <Link
               href="/replay"
               className="rounded-full bg-good px-7 py-3 text-[14px] font-semibold text-white transition-opacity hover:opacity-90"
@@ -111,12 +111,12 @@ export default function HomePage() {
               Check the numbers
             </Link>
           </div>
-          <div className="rise rise-5 mt-14 flex flex-wrap items-end justify-center gap-x-12 gap-y-6 border-t border-headerline pt-8">
+          <div className="rise rise-5 mt-10 flex flex-wrap items-end justify-center gap-x-12 gap-y-5 border-t border-headerline pt-7">
             <div>
               <CountUp
                 value={b3.recoveredPaise}
                 kind="rupees"
-                className="text-[34px] font-semibold leading-none tracking-tight text-good"
+                className="text-[32px] font-semibold leading-none tracking-tight text-good"
               />
               <div className="mt-2 text-[13px] text-paperdim">
                 recovered of {formatRupees(b3.atRiskPaise)}
@@ -144,7 +144,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="-mt-12">
+      <section className="-mt-9">
         <LedgerPreview
           rows={preview}
           stats={{
@@ -166,7 +166,7 @@ export default function HomePage() {
             Four steps, and one of them is stopping
           </h2>
         </div>
-        <div className="mt-10 grid items-center gap-12 lg:grid-cols-[340px_minmax(0,1fr)]">
+        <div className="mt-8 grid items-center gap-10 lg:grid-cols-[340px_minmax(0,1fr)]">
           <div className="hidden lg:block">
             <HeroDiagram />
           </div>
