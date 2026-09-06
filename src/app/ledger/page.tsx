@@ -16,13 +16,28 @@ import {
 export default async function LedgerTablePage({
   searchParams,
 }: {
-  searchParams: Promise<{ seed?: string }>;
+  searchParams: Promise<{ seed?: string; source?: string }>;
 }) {
-  const seed = normalizeSeed((await searchParams).seed);
+  const params = await searchParams;
+  const seed = normalizeSeed(params.seed);
+  const source = params.source === "dispute" || params.source === "debit" ? params.source : null;
   const ledger = getLedger(seed);
   const summary = getSummary(seed);
   const report = getReport(seed);
-  const rows = [...ledger].sort((a, b) => b.row.amountPaise - a.row.amountPaise);
+  const filtered = source
+    ? ledger.filter((v) =>
+        source === "dispute"
+          ? v.row.source === "DISPUTE"
+          : v.row.source !== "DISPUTE",
+      )
+    : ledger;
+  const rows = [...filtered].sort((a, b) => b.row.amountPaise - a.row.amountPaise);
+  const qs = (next: string | null) => {
+    const parts: string[] = [];
+    if (seed) parts.push(`seed=${encodeURIComponent(seed)}`);
+    if (next) parts.push(`source=${next}`);
+    return parts.length ? `/ledger?${parts.join("&")}` : "/ledger";
+  };
 
   return (
     <div className="space-y-8">
@@ -74,6 +89,26 @@ export default async function LedgerTablePage({
           tone="warn"
         />
       </StatRow>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {[
+          { key: null, label: `All ${ledger.length}` },
+          { key: "debit" as const, label: `Failed payments ${summary.failures}` },
+          { key: "dispute" as const, label: `Disputes ${summary.disputes}` },
+        ].map((f) => (
+          <Link
+            key={f.label}
+            href={qs(f.key)}
+            className={`rounded-full border px-4 py-1.5 text-[13px] transition-colors ${
+              source === f.key
+                ? "border-ink bg-ink font-medium text-white"
+                : "border-line bg-card text-sub hover:border-ink hover:text-ink"
+            }`}
+          >
+            {f.label}
+          </Link>
+        ))}
+      </div>
 
       <div className="border border-line bg-card">
         <div className="overflow-x-auto">
