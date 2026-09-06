@@ -1,7 +1,7 @@
 <title>Recovery Ledger Pitch</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,ital,wght@9..144,0,400;9..144,0,500;9..144,1,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 
 <style>
   :root {
@@ -16,7 +16,6 @@
     --goodsoft: #e3f0e8;
     --warn: #92540e;
     --warnsoft: #f6eddd;
-    --bad: #b3261e;
     --dim: #b8bcc6;
     --sans: "Inter", ui-sans-serif, system-ui, sans-serif;
     --display: "Fraunces", Georgia, "Times New Roman", serif;
@@ -63,9 +62,9 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 20px;
-    padding: 72px 56px;
-    max-width: 1100px;
+    gap: 18px;
+    padding: 64px 56px;
+    max-width: 1060px;
     margin: 0 auto;
     border-bottom: 1px solid var(--line);
   }
@@ -75,10 +74,21 @@
     background: var(--ink);
     color: var(--paper);
     max-width: none;
-    padding-left: max(56px, calc(50vw - 494px));
-    padding-right: max(56px, calc(50vw - 494px));
+    padding-left: max(56px, calc(50vw - 474px));
+    padding-right: max(56px, calc(50vw - 474px));
     border-bottom: 0;
   }
+
+  .badge {
+    align-self: flex-start;
+    border: 1px solid #262a35;
+    background: #1c202b;
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-size: 12px;
+    color: var(--dim);
+  }
+  .badge strong { color: #fff; font-weight: 500; }
 
   .eyebrow {
     font-size: 11px;
@@ -93,65 +103,63 @@
   h1 {
     font-family: var(--display);
     font-weight: 500;
-    font-size: clamp(38px, 5.6vw, 62px);
-    line-height: 1.06;
+    font-size: clamp(38px, 5.4vw, 60px);
+    line-height: 1.05;
     letter-spacing: -0.02em;
     text-wrap: balance;
     margin: 0;
   }
+  h1 em { font-style: italic; }
 
   h2 {
     font-family: var(--display);
     font-weight: 500;
-    font-size: clamp(28px, 3.6vw, 42px);
+    font-size: clamp(27px, 3.4vw, 40px);
     line-height: 1.12;
     letter-spacing: -0.015em;
     text-wrap: balance;
     margin: 0;
   }
 
-  p { margin: 0; font-size: 16px; line-height: 1.65; color: var(--sub); max-width: 62ch; }
+  p { margin: 0; font-size: 16px; line-height: 1.6; color: var(--sub); max-width: 64ch; }
   .dark p { color: var(--dim); }
   strong { color: var(--ink); font-weight: 600; }
   .dark strong { color: #fff; }
 
-  .lede { font-size: 18px; }
-
   .figs {
     display: flex;
     flex-wrap: wrap;
-    gap: 44px;
-    padding-top: 26px;
+    gap: 40px;
+    padding-top: 22px;
     border-top: 1px solid var(--line);
   }
   .dark .figs { border-color: #262a35; }
   .fig-n {
-    font-size: 38px;
+    font-size: 36px;
     font-weight: 600;
     letter-spacing: -0.02em;
     line-height: 1;
     font-variant-numeric: tabular-nums;
   }
-  .fig-l { font-size: 13px; color: var(--faint); margin-top: 7px; }
+  .fig-l { font-size: 13px; color: var(--faint); margin-top: 6px; }
   .dark .fig-l { color: var(--dim); }
   .green { color: var(--good); }
   .dark .green { color: #3ddc84; }
   .amber { color: var(--warn); }
-  .red { color: var(--bad); }
 
-  .cols { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+  .cols { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
 
   .step {
     border: 1px solid var(--line);
     background: var(--card);
-    padding: 18px;
+    padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 7px;
   }
   .step-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
   .step h3 { margin: 0; font-size: 15px; font-weight: 600; }
-  .step p { font-size: 13px; line-height: 1.55; }
+  .step p { font-size: 13px; line-height: 1.5; }
   code {
     font-family: var(--mono);
     font-size: 11px;
@@ -165,10 +173,10 @@
   .bars { display: flex; flex-direction: column; gap: 2px; }
   .bar-row {
     display: grid;
-    grid-template-columns: 178px 1fr 84px;
+    grid-template-columns: 186px 1fr 84px;
     align-items: center;
     gap: 16px;
-    padding: 9px 10px;
+    padding: 8px 10px;
     border-left: 2px solid transparent;
   }
   .bar-row.me { background: var(--goodsoft); border-left-color: var(--good); }
@@ -177,45 +185,38 @@
   .bar-track { height: 8px; background: var(--hairline); }
   .bar-fill { height: 8px; background: var(--dim); }
   .bar-row.me .bar-fill { background: var(--good); }
-  .bar-val {
-    font-size: 13px;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-    color: var(--sub);
-  }
+  .bar-val { font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; color: var(--sub); }
   .bar-row.me .bar-val { color: var(--ink); font-weight: 600; }
 
-  .split { display: grid; gap: 20px; grid-template-columns: 1fr 1fr; align-items: start; }
-  .panel { border: 1px solid var(--line); background: var(--card); padding: 20px; }
+  .split { display: grid; gap: 18px; grid-template-columns: 1fr 1fr; align-items: start; }
+  .panel { border: 1px solid var(--line); background: var(--card); padding: 18px; }
   .panel-good { border-color: #bcd9c8; background: var(--goodsoft); }
   .panel-warn { border-color: #e2cfa8; background: var(--warnsoft); }
-  .panel h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
-  .panel p { font-size: 13.5px; line-height: 1.6; }
-  .mono-line { font-family: var(--mono); font-size: 12.5px; color: var(--ink); }
+  .panel h3 { margin: 0 0 7px; font-size: 14px; font-weight: 600; }
+  .panel p { font-size: 13.5px; line-height: 1.55; }
 
-  ul { margin: 0; padding-left: 18px; color: var(--sub); font-size: 15px; line-height: 1.7; max-width: 62ch; }
+  ul { margin: 0; padding-left: 18px; color: var(--sub); font-size: 15px; line-height: 1.65; max-width: 64ch; }
   li::marker { color: var(--faint); }
-  li + li { margin-top: 6px; }
+  li + li { margin-top: 5px; }
+  .dark ul { color: var(--dim); }
 
   .quote {
-    border-left: 2px solid var(--ink);
+    border-left: 2px solid #3ddc84;
     padding-left: 18px;
     font-size: 17px;
-    line-height: 1.6;
-    color: var(--ink);
+    line-height: 1.55;
+    color: var(--paper);
     max-width: 60ch;
   }
-  .dark .quote { border-color: #3ddc84; color: var(--paper); }
 
   .foot { font-size: 13px; color: var(--faint); font-family: var(--mono); }
-
-  a { color: inherit; }
+  .dark .foot { color: var(--dim); }
 
   @media (max-width: 720px) {
-    .slide { padding: 56px 22px; }
+    .slide { padding: 52px 22px; }
     .split { grid-template-columns: 1fr; }
-    .bar-row { grid-template-columns: 120px 1fr 72px; gap: 10px; }
-    .figs { gap: 26px; }
+    .bar-row { grid-template-columns: 122px 1fr 74px; gap: 10px; }
+    .figs { gap: 24px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -225,7 +226,7 @@
 
   @media print {
     .progress, .counter { display: none; }
-    .slide { min-height: auto; page-break-after: always; border-bottom: 0; padding: 34px; }
+    .slide { min-height: auto; page-break-after: always; border-bottom: 0; padding: 32px; }
     body { background: #fff; }
   }
 
@@ -233,14 +234,14 @@
 </style>
 
 <div class="progress" id="progress"></div>
-<div class="counter" id="counter">1 / 8</div>
+<div class="counter" id="counter">1 / 5</div>
 
 <section class="slide dark">
-  <p class="eyebrow">Razorpay AI Buildathon &middot; Track 3, AI Revenue Recovery</p>
-  <h1>Every unrecovered rupee.<br>One ledger. One decision.</h1>
-  <p class="lede">Most billing systems retry a failed payment on a fixed schedule without
-    ever asking why it failed. Recovery Ledger reads the reason first, takes the one
-    action that can work, and stops when nothing can.</p>
+  <p class="badge">Built for <strong>Razorpay AI Buildathon 2026</strong> &nbsp;/&nbsp; AI Revenue Recovery</p>
+  <h1>Stop chasing the money<br>that <em>cannot</em> come back</h1>
+  <p>Most billing systems retry a failed subscription payment on a fixed schedule
+    without ever asking why it failed. Recovery Ledger reads the reason first, takes
+    the one action that can work, and stops when nothing can.</p>
   <div class="figs">
     <div>
       <div class="fig-n green">&#8377;51.89L</div>
@@ -248,61 +249,37 @@
     </div>
     <div>
       <div class="fig-n">+36.9%</div>
-      <div class="fig-l">vs the day-1/3/5 retry schedule</div>
+      <div class="fig-l">over the standard retry schedule</div>
     </div>
     <div>
       <div class="fig-n">95.9%</div>
-      <div class="fig-l">of a perfect-information ceiling</div>
+      <div class="fig-l">of what was winnable at all</div>
     </div>
   </div>
 </section>
 
 <section class="slide">
   <p class="eyebrow">The problem</p>
-  <h2>A payment fails. The service was delivered. The money never arrives.</h2>
-  <p>In India this happens constantly, because UPI Autopay and e&#8209;mandates fail in ways
-    cards do not. Mandates expire. Amount caps get breached. Customers revoke permission
-    silently, and the merchant only learns when the debit bounces.</p>
-  <p>Almost every billing system answers the same way: <strong>retry on day one, day three,
-    day five.</strong> The reason for the failure is never read, so the same three attempts
-    are spent on a customer who is simply between paychecks and on one who cancelled
-    their mandate two months ago.</p>
-  <div class="split">
-    <div class="panel">
-      <h3>What the merchant actually receives</h3>
-      <p class="mono-line">payment_cancelled</p>
-      <p style="margin-top:8px">One short string from the bank. That is the entire input.</p>
-    </div>
-    <div class="panel">
-      <h3>What the merchant already holds</h3>
-      <p class="mono-line">mandate cap, expiry, status</p>
-      <p style="margin-top:8px">They registered the mandate. Almost no dunning system joins
-        this to the retry decision.</p>
-    </div>
-  </div>
-</section>
-
-<section class="slide">
-  <p class="eyebrow">The insight</p>
   <h2>A quarter of the money cannot be recovered by anyone, ever.</h2>
-  <p>Failures are not alike, and the difference is not a matter of degree. It is the
-    difference between a delay and a wall.</p>
+  <p>In India, UPI Autopay and e&#8209;mandates fail in ways cards do not. Mandates
+    expire, amount caps get breached, customers revoke permission silently. All the
+    merchant receives is one short string from the bank, and almost every system
+    answers it the same way: <strong>retry on day one, three and five.</strong></p>
   <div class="split">
     <div class="panel panel-good">
-      <h3 class="green">Low balance &middot; a timing problem</h3>
+      <h3 class="green">Low balance is a delay</h3>
       <p>The customer is between paychecks. Retry just after payday and the money is
-        usually there. Retry two days before and it is close to a coin flip.</p>
+        usually there. Retry two days before and it is a coin flip.</p>
     </div>
     <div class="panel panel-warn">
-      <h3 class="amber">Expired mandate &middot; a wall</h3>
-      <p>The permission to charge is gone. The bank will refuse every attempt, forever.
-        No retry schedule, however clever, can recover a single rupee of it.</p>
+      <h3 class="amber">An expired mandate is a wall</h3>
+      <p>The permission to charge is gone. The bank refuses every attempt, forever.
+        No retry schedule, however clever, recovers a single rupee.</p>
     </div>
   </div>
-  <p><strong>26% of this ledger is unrecoverable by construction.</strong> A fixed schedule
-    spends three attempts on every one of those rows, every cycle, and recovers nothing.
-    That is the case for treating recovery as resource allocation, where the hard part is
-    knowing what not to chase.</p>
+  <p><strong>26% of this ledger is unrecoverable by construction.</strong> A fixed
+    schedule spends three attempts on each of those rows every cycle and recovers
+    nothing, which is the case for treating recovery as resource allocation.</p>
 </section>
 
 <section class="slide">
@@ -311,38 +288,35 @@
   <div class="cols">
     <div class="step">
       <div class="step-top"><h3>Detect</h3><code>payment_cancelled</code></div>
-      <p>A debit bounces or a chargeback lands. Either becomes one row: amount, customer,
-        and the raw bank code exactly as received.</p>
+      <p>A debit bounces or a chargeback lands. Either becomes one row with the raw
+        bank code exactly as received.</p>
     </div>
     <div class="step">
       <div class="step-top"><h3>Diagnose</h3><code>MANDATE_REVOKED</code></div>
-      <p>The code is ambiguous on its own. Joined with the merchant's own mandate record
-        it resolves to a real cause, at 96.3% accuracy.</p>
+      <p>That code is ambiguous alone. Joined with the merchant's own mandate record
+        it resolves, at 96.3% accuracy.</p>
     </div>
     <div class="step">
       <div class="step-top"><h3>Decide</h3><code>retry_at</code></div>
       <p>Each cause has one action that can work: retry at a learned moment, renew the
-        mandate, split a debit that breached its cap.</p>
+        mandate, split a capped debit.</p>
     </div>
     <div class="step">
       <div class="step-top"><h3>Stop</h3><code>ABANDON</code></div>
-      <p>When nothing can work, the engine spends nothing and the saved attempts go where
-        money can actually come back.</p>
+      <p>When nothing can work the engine spends nothing, and the saved attempts go
+        where money can come back.</p>
     </div>
   </div>
-  <p>Customer contact is capped at two messages per case. Recovery is not allowed to
-    become spam, and that cap costs about one percent of recovery to buy it.</p>
+  <p>Chargebacks flow through the <strong>same ledger and the same statuses</strong>
+    with a different action set, including a "do not contest" verdict when a case
+    cannot be won. Adding them required no schema change at all. Customer contact is
+    capped at two messages per case, because recovery is not allowed to become spam.</p>
 </section>
 
 <section class="slide">
   <p class="eyebrow">The proof</p>
   <h2>Six strategies, one world, the same budget.</h2>
   <div class="bars">
-    <div class="bar-row">
-      <span class="bar-name">No recovery</span>
-      <span class="bar-track"><span class="bar-fill" style="width:0%"></span></span>
-      <span class="bar-val">&#8377;0</span>
-    </div>
     <div class="bar-row">
       <span class="bar-name">Fixed retry, 1/3/5</span>
       <span class="bar-track"><span class="bar-fill" style="width:70%"></span></span>
@@ -369,77 +343,36 @@
       <span class="bar-val">&#8377;54.12L</span>
     </div>
   </div>
+  <p>Beating a naive schedule proves little, since commercial products already optimise
+    <em>when</em> to retry. So I built that competitor from my own parts: the identical
+    learned timing model, best moment every time, but blind to the cause. Understanding
+    the cause still beats it by <strong>+23.1% on 39% fewer attempts.</strong> That gap
+    is the contribution, isolated as one number.</p>
   <div class="figs">
-    <div><div class="fig-n green">+36.9%</div><div class="fig-l">more money than the fixed schedule</div></div>
-    <div><div class="fig-n">338</div><div class="fig-l">dead retries, against 681</div></div>
-    <div><div class="fig-n">20 / 20</div><div class="fig-l">unseen seeds where it still wins</div></div>
+    <div><div class="fig-n green">338</div><div class="fig-l">dead retries, against 681</div></div>
+    <div><div class="fig-n">20 / 20</div><div class="fig-l">unseen worlds where it still wins</div></div>
+    <div><div class="fig-n">~1s</div><div class="fig-l">to reproduce, no key or network</div></div>
   </div>
-  <p class="foot">npm run bench &middot; about one second &middot; no API key, no database, no network</p>
-</section>
-
-<section class="slide">
-  <p class="eyebrow">The comparison that matters</p>
-  <h2>Timing is necessary. It is not sufficient.</h2>
-  <p>Commercial dunning products already optimise <em>when</em> to retry, so beating a naive
-    schedule proves little. I built that competitor out of my own parts: a policy using the
-    <strong>identical learned timing model</strong>, picking the best possible moment every
-    time, but never asking why the payment failed.</p>
-  <div class="split">
-    <div class="panel">
-      <h3>Smart timing, cause-blind</h3>
-      <div class="fig-n" style="font-size:30px">&#8377;42.13L</div>
-      <p style="margin-top:8px">2,236 retries, 908 of them on payments that could never
-        succeed.</p>
-    </div>
-    <div class="panel panel-good">
-      <h3 class="green">Recovery Ledger</h3>
-      <div class="fig-n green" style="font-size:30px">&#8377;51.89L</div>
-      <p style="margin-top:8px">1,369 retries, 338 wasted. More money, 39% less work.</p>
-    </div>
-  </div>
-  <p><strong>+23.1% more recovered, with 39% fewer attempts.</strong> That gap is the entire
-    contribution of the project, isolated as a single number: knowing the cause, and knowing
-    when to stop.</p>
-</section>
-
-<section class="slide">
-  <p class="eyebrow">The second lane</p>
-  <h2>Chargebacks are the same problem, so they use the same ledger.</h2>
-  <p>Money that arrived and was taken back is still money the merchant earned and does not
-    have. Disputes flow through the identical schema and statuses, with a different action
-    set. Adding them required <strong>no change to the ledger at all</strong>, which is the
-    architecture claim demonstrated rather than asserted.</p>
-  <div class="panel">
-    <h3>A real case: &#8377;1,299 under Visa 13.2</h3>
-    <p>The cardholder says they cancelled before the charge. Visa requires proof of when
-      the cancellation was requested, and support handled it by phone and never logged it.
-      Without that document the case cannot be reviewed at all.</p>
-    <p style="margin-top:10px"><strong class="amber">Recommendation: do not contest.</strong>
-      Filing costs &#8377;850 to lose. The useful output is not the score, it is the pattern:
-      fix the missing record upstream and these stop being losses.</p>
-  </div>
-  <p class="foot">891 failed payments + 9 disputes = 900 rows, one table</p>
 </section>
 
 <section class="slide dark">
   <p class="eyebrow">Honesty, and what is next</p>
   <h2>The limitation, stated first.</h2>
-  <p class="quote">The customers are simulated and I authored that world, so this measures
-    policy quality against a stated model, not production reality.</p>
+  <p class="quote">The customers are simulated and I authored that world, so this
+    measures policy quality against a stated model, not production reality.</p>
   <p>What protects the result: the simulator's parameters were frozen and committed
-    <strong>before a single line of the policy engine existed</strong>, verifiable in one
-    command of git history. The ranking holds across twenty seeds the code has never seen.
-    And the benchmark warns if any policy beats the oracle, which caught a real bug in my
-    own favour before it reached the README.</p>
-  <p>What is real: the Razorpay error codes, the RBI e&#8209;mandate constraints, and the Visa
-    and Mastercard dispute codes.</p>
-  <ul style="color:var(--dim)">
+    <strong>before a single line of the policy engine existed</strong>, verifiable in
+    one command of git history; the ranking holds across twenty unseen seeds; and the
+    harness warns if any policy beats the oracle, which caught a real bug in my own
+    favour before it reached the README. What is real: the Razorpay error codes, the
+    RBI e&#8209;mandate constraints, and the Visa and Mastercard dispute codes.</p>
+  <ul>
     <li>Verify the RBI figures against the primary circular, not secondary reporting.</li>
     <li>Learn the ambiguous code mappings from data instead of ruling them.</li>
     <li>Respect per&#8209;rail re&#8209;presentment caps as a policy constraint.</li>
     <li>Add a third money source, such as refund abuse, to prove the ledger extends again.</li>
   </ul>
-  <p class="foot" style="color:var(--dim)">github.com/OshiSharma1222/Recovery-ledger &middot; 60 tests &middot; one command to reproduce</p>
+  <p class="foot">github.com/OshiSharma1222/Recovery-ledger &nbsp;/&nbsp; 60 tests &nbsp;/&nbsp; npm run bench</p>
 </section>
 
 <script>
