@@ -1,0 +1,397 @@
+<title>Recovery Ledger Video Script</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --bg: #14171f;
+    --panel: #1c202b;
+    --line: #2a2f3a;
+    --text: #eceef1;
+    --dim: #9aa0ab;
+    --faint: #6c7280;
+    --good: #3ddc84;
+    --amber: #f0b429;
+    --sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --display: "Fraunces", Georgia, serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 860px; margin: 0 auto; padding: 40px 24px 140px; }
+
+  header { border-bottom: 1px solid var(--line); padding-bottom: 22px; }
+  h1 {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 34px;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+  .sub { color: var(--dim); font-size: 14px; margin: 10px 0 0; line-height: 1.6; }
+  .sub kbd {
+    font-family: var(--mono);
+    font-size: 11px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 2px 6px;
+    color: var(--text);
+  }
+
+  .beat {
+    border-bottom: 1px solid var(--line);
+    padding: 26px 0 26px 96px;
+    position: relative;
+    transition: opacity 0.25s ease;
+  }
+  .beat.past { opacity: 0.32; }
+  .beat.live::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 26px;
+    bottom: 26px;
+    width: 2px;
+    background: var(--good);
+  }
+
+  .time {
+    position: absolute;
+    left: 14px;
+    top: 28px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .beat.live .time { color: var(--good); }
+
+  .title {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin: 0 0 12px;
+  }
+  .beat.live .title { color: var(--text); }
+
+  .screen {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    background: var(--panel);
+    border-left: 2px solid var(--amber);
+    padding: 10px 14px;
+    margin: 0 0 16px;
+    font-size: 14px;
+    color: var(--dim);
+    line-height: 1.5;
+  }
+  .screen b {
+    color: var(--amber);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .say { font-size: 20px; line-height: 1.62; margin: 0; color: var(--text); }
+  .say + .say { margin-top: 14px; }
+  .say em { color: var(--good); font-style: normal; font-weight: 500; }
+
+  .note {
+    margin: 14px 0 0;
+    font-size: 13px;
+    color: var(--faint);
+    font-family: var(--mono);
+    line-height: 1.5;
+  }
+
+  .bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 12px 24px;
+    z-index: 20;
+  }
+  .clock {
+    font-family: var(--mono);
+    font-size: 30px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .clock.over { color: var(--amber); }
+  button {
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--text);
+    padding: 9px 20px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  button.primary { background: var(--good); border-color: var(--good); color: #0b1a11; }
+  button:focus-visible { outline: 2px solid var(--good); outline-offset: 2px; }
+  .track { flex: 1; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+  .fill { height: 4px; width: 0; background: var(--good); }
+  .hint { font-size: 12px; color: var(--faint); font-family: var(--mono); }
+
+  @media (max-width: 640px) {
+    .beat { padding-left: 0; }
+    .time { position: static; display: block; margin-bottom: 6px; }
+    .say { font-size: 18px; }
+    .hint { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .beat, .fill { transition: none; }
+  }
+
+  @media print {
+    body { background: #fff; color: #000; }
+    .bar { display: none; }
+    .beat { opacity: 1 !important; border-color: #ccc; }
+    .say { font-size: 15px; }
+    .screen { background: #f2f2f2; color: #333; }
+    .title, .sub, .note, .time { color: #555; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Recovery Ledger, five minute pitch</h1>
+    <p class="sub">
+      About 600 spoken words. Read at a normal pace that is roughly four minutes,
+      leaving a full minute for pauses, clicks and the benchmark running on camera.
+      Press <kbd>Space</kbd> to start or pause the timer, <kbd>R</kbd> to
+      reset. The beat you should be on lights up as the clock runs.
+    </p>
+    <p class="sub">
+      Before recording: run <kbd>npm run dev:clean</kbd>, then open every page once so
+      fonts and compiles are cached. Two windows ready, browser and terminal, terminal
+      font size up. Close other tabs.
+    </p>
+  </header>
+
+  <section class="beat" data-start="0" data-end="28">
+    <span class="time">0:00</span>
+    <p class="title">The problem</p>
+    <p class="screen"><b>Screen</b><span>Homepage, still. Let the count-up finish before you start talking.</span></p>
+    <p class="say">A subscription payment fails. The customer got the service, the
+      business earned the money, and the money never arrived.</p>
+    <p class="say">In India this happens constantly, because UPI Autopay and e-mandates
+      fail in ways cards do not. Mandates expire. Amount caps get breached. Customers
+      revoke permission silently.</p>
+    <p class="say">And almost every billing system responds the same way: retry on day
+      one, day three, day five. Without ever asking <em>why</em> it failed.</p>
+  </section>
+
+  <section class="beat" data-start="28" data-end="58">
+    <span class="time">0:28</span>
+    <p class="title">The insight</p>
+    <p class="screen"><b>Screen</b><span>Scroll slowly to the live ledger preview, then to the four steps.</span></p>
+    <p class="say">But the reason matters enormously.</p>
+    <p class="say">No balance? That is a timing problem. Retry just after payday and you
+      will probably get paid.</p>
+    <p class="say">Expired mandate? A retry can never work. The permission to charge is
+      gone, so the bank refuses every single attempt, forever.</p>
+    <p class="say">In my simulation, <em>twenty-six percent</em> of at-risk money is
+      unrecoverable by construction. A fixed schedule burns three attempts on every one
+      of those rows, every cycle, and gets nothing back.</p>
+  </section>
+
+  <section class="beat" data-start="58" data-end="118">
+    <span class="time">0:58</span>
+    <p class="title">Lane 1, a real row</p>
+    <p class="screen"><b>Screen</b><span>Click Ledger. Pause on the table. Then open a mandate_revoked row.</span></p>
+    <p class="say">So I built one ledger. Every rupee the merchant is owed and does not
+      have, in one table.</p>
+    <p class="say">Here is a real row. The bank sent back <em>payment_cancelled</em>. That
+      string is all a merchant actually gets.</p>
+    <p class="say">My classifier joins it with the merchant's own mandate record, the cap
+      and the expiry date they already hold, and resolves it: the customer revoked the
+      mandate.</p>
+    <p class="say">So the engine does this. It abandons the row. Twenty-eight thousand
+      rupees, and it deliberately spends nothing.</p>
+    <p class="say">That is the whole thesis. Recovery is resource allocation, and the hard
+      part is knowing what <em>not</em> to chase.</p>
+    <p class="note">Point at the ABANDON action and the rationale as you say the last two lines.</p>
+  </section>
+
+  <section class="beat" data-start="118" data-end="160">
+    <span class="time">1:58</span>
+    <p class="title">The race</p>
+    <p class="screen"><b>Screen</b><span>Click Replay. Press Play. Let it run, do not cut it short.</span></p>
+    <p class="say">Here is the same set of failed payments given to two systems.</p>
+    <p class="say">Grey is the usual approach: retry everything on a schedule. Green is
+      mine.</p>
+    <p class="say">Watch the gap open. And watch the amber decisions on the right, those
+      are rows the engine is walking away from on day zero, because it already knows
+      they are dead.</p>
+    <p class="say">Same budget. Same payments. The difference is entirely in knowing which
+      ones deserve the effort.</p>
+  </section>
+
+  <section class="beat" data-start="160" data-end="216">
+    <span class="time">2:40</span>
+    <p class="title">The proof, and the kill shot</p>
+    <p class="screen"><b>Screen</b><span>Click Benchmark. Then type a word into the world box and press Run.</span></p>
+    <p class="say">Six strategies, same world, same number of allowed attempts.</p>
+    <p class="say">Against the standard schedule: thirty-seven percent more money
+      recovered, with thirty percent fewer retries and half the wasted attempts.</p>
+    <p class="say">But here is the comparison I care about. This row uses my exact timing
+      model with no cause classification. That is essentially what commercial
+      smart-retry products do. Understanding the cause still beats it by
+      <em>twenty-three percent</em>.</p>
+    <p class="say">And you might be wondering if I picked a flattering scenario. So pick
+      your own.</p>
+    <p class="say">That word seeds an entirely new population. Different customers,
+      different failures, every number rebuilt. Same result.</p>
+    <p class="note">If someone is in the room, ask them for the word. It is the strongest ten seconds in the video.</p>
+  </section>
+
+  <section class="beat" data-start="216" data-end="252">
+    <span class="time">3:36</span>
+    <p class="title">Lane 2</p>
+    <p class="screen"><b>Screen</b><span>Back to Ledger, open a dsp_ dispute row.</span></p>
+    <p class="say">The second lane is chargebacks: money that arrived and got taken back.</p>
+    <p class="say">Same ledger, same statuses, different actions. This case is thirteen
+      hundred rupees under Visa 13.2. Visa requires proof of when the customer
+      cancelled, and the merchant does not have it.</p>
+    <p class="say">So the recommendation is: <em>do not contest</em>. It cannot be won, and
+      filing costs eight hundred and fifty rupees to lose.</p>
+    <p class="say">Same thesis, second problem. Adding disputes required no change to the
+      ledger schema at all.</p>
+    <p class="note">If you are running long, cut this beat to its first and last line.</p>
+  </section>
+
+  <section class="beat" data-start="252" data-end="282">
+    <span class="time">4:12</span>
+    <p class="title">How it holds up</p>
+    <p class="screen"><b>Screen</b><span>Terminal. Run npm run bench live, on camera.</span></p>
+    <p class="say">One command. No API key, no database, no network. It runs in about a
+      second and prints the same numbers you just saw.</p>
+    <p class="say">The simulator's parameters were frozen and committed before I wrote a
+      single line of the policy engine, so the test could not be tuned to flatter the
+      result. And the ranking holds across twenty seeds it has never seen.</p>
+  </section>
+
+  <section class="beat" data-start="282" data-end="300">
+    <span class="time">4:42</span>
+    <p class="title">Close</p>
+    <p class="screen"><b>Screen</b><span>Back to homepage.</span></p>
+    <p class="say">The honest limitation: the customers are simulated, and I authored that
+      world. This measures policy quality against a stated model, not production
+      reality, and the repo says so above the fold.</p>
+    <p class="say">What is real is the idea. Recovery is resource allocation, and knowing
+      what not to chase is where the money is.</p>
+  </section>
+</div>
+
+<div class="bar">
+  <span class="clock" id="clock">0:00</span>
+  <button class="primary" id="toggle">Start</button>
+  <button id="reset">Reset</button>
+  <span class="track"><span class="fill" id="fill"></span></span>
+  <span class="hint">Space to start or pause &nbsp;/&nbsp; R to reset &nbsp;/&nbsp; target 5:00</span>
+</div>
+
+<script>
+  const TOTAL = 300;
+  const beats = Array.from(document.querySelectorAll(".beat"));
+  const clock = document.getElementById("clock");
+  const fill = document.getElementById("fill");
+  const toggle = document.getElementById("toggle");
+  const reset = document.getElementById("reset");
+
+  let elapsed = 0;
+  let running = false;
+  let ticker = null;
+
+  function fmt(s) {
+    const m = Math.floor(s / 60);
+    return m + ":" + String(Math.floor(s % 60)).padStart(2, "0");
+  }
+
+  function paint() {
+    clock.textContent = fmt(elapsed);
+    clock.classList.toggle("over", elapsed > TOTAL);
+    fill.style.width = Math.min(100, (elapsed / TOTAL) * 100) + "%";
+
+    let live = null;
+    beats.forEach((b) => {
+      const start = Number(b.dataset.start);
+      const end = Number(b.dataset.end);
+      const isLive = running && elapsed >= start && elapsed < end;
+      b.classList.toggle("live", isLive);
+      b.classList.toggle("past", running && elapsed >= end);
+      if (isLive) live = b;
+    });
+    if (live && running) {
+      const box = live.getBoundingClientRect();
+      if (box.top < 70 || box.bottom > innerHeight - 110) {
+        live.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }
+
+  function start() {
+    if (running) return;
+    running = true;
+    toggle.textContent = "Pause";
+    ticker = setInterval(() => {
+      elapsed += 1;
+      paint();
+    }, 1000);
+    paint();
+  }
+
+  function pause() {
+    running = false;
+    toggle.textContent = elapsed > 0 ? "Resume" : "Start";
+    clearInterval(ticker);
+    paint();
+  }
+
+  toggle.addEventListener("click", () => (running ? pause() : start()));
+  reset.addEventListener("click", () => {
+    pause();
+    elapsed = 0;
+    toggle.textContent = "Start";
+    beats.forEach((b) => b.classList.remove("live", "past"));
+    paint();
+  });
+
+  addEventListener("keydown", (e) => {
+    if (e.target.tagName === "BUTTON" && e.key === " ") return;
+    if (e.key === " ") {
+      e.preventDefault();
+      running ? pause() : start();
+    } else if (e.key === "r" || e.key === "R") {
+      reset.click();
+    }
+  });
+
+  paint();
+</script>
